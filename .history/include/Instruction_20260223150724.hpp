@@ -1,0 +1,8 @@
+enum OPCODE {ADD,
+SUB,
+ADDI,
+LW,
+SW,
+BNE,
+JAL};
+
