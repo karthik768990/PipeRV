@@ -1,10 +1,10 @@
 #pragma once
 
-static constexpr int NUM_REGS = 32;
+static constexpr int 
 class RegisterFile {
 private:
-    int regs[NUM_REGS];
-    
+    int regs[32];
+
 public:
     RegisterFile();
     int read(int index) const;
