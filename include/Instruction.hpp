@@ -5,7 +5,8 @@ ADDI,
 LW,
 SW,
 BNE,
-JAL};
+JAL,
+COUNT};
 
 class Instruction{
     public:
