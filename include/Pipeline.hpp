@@ -5,12 +5,7 @@
 #include "Memory.hpp"
 #include "Stats.hpp"
 #include "ConfigReader.hpp"
-
-class Pipeline {
-private:
-
-
-    struct IF_ID {
+struct IF_ID {
         Instruction instruction;
         int pc;
     };
@@ -34,6 +29,11 @@ private:
     };
 
 
+class Pipeline {
+private:
+
+
+    
     IF_ID if_id;
     ID_EX id_ex;
     EX_MEM ex_mem;
