@@ -1,30 +1,30 @@
 #include "Stats.hpp"
-#include <assert.h>
 
 void Stats::incrementCycle(){
-    Stats::cycleCount++;
+    cycleCount++;
 }
 
 void Stats::incrementInstruction(){
-    Stats::instructionCount++;
+    instructionCount++;
 }
 
 void Stats::incrementStall(){
-    Stats::stallCount++;
+    stallCount++;
 }
 
 long long Stats::getCycleCount() const{
-    return Stats::cycleCount;
+    return cycleCount;
 }
 
 long long Stats::getInstructionCount() const{
-    return Stats::instructionCount;
+    return instructionCount;
 }
 
 long long Stats::getStallCount() const{
-    return Stats::stallCount;
+    return stallCount;
 }
 
 double Stats::calculateIPC() const{
-    return 1.0*Stats::instructionCount/Stats::cycleCount;
+    if(cycleCount==0)return 0.0;
+    return 1.0*instructionCount/cycleCount;
 }
