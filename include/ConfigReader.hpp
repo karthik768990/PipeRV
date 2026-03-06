@@ -11,7 +11,7 @@ class ConfigReader{
             forwardingEnabled = false;
             setDefaultLatencies();
         }         
-        void loadConfig(std::string filename);
+        void loadConfig(const std::string& filename);
         int getLatency(OPCODE opcode) const;
         bool isForwardingEnabled() const;
         void setDefaultLatencies();
