@@ -15,18 +15,21 @@ void Pipeline::reset() {
     mem_wb = {Instruction(), 0};
 }
 
-void Pipeline::step(std::vector<Instruction>& instructions,
-                    int& pc,
-                    RegisterFile& registerFile,
-                    Memory& memory,
-                    Stats& stats,
-                    ConfigReader& config) {
+ void Pipeline::step(std::vector<Instruction>& instructions,
+              int& pc,
+              RegisterFile& registerFile,
+              Memory& memory,
+              Stats& stats,
+              ConfigReader& config) {
 
+    // =========================
+    // WB STAGE
+    // =========================
     Instruction wbInst = mem_wb.instruction;
 
     if (wbInst.opcode != OPCODE::NOP) {
 
-        if (wbInst.rd >= 0) {
+        if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW) {
             registerFile.write(wbInst.rd, mem_wb.writeData);
         }
 
@@ -34,7 +37,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     }
 
 
-    
+    // =========================
+    // MEM STAGE
+    // =========================
     mem_wb.instruction = ex_mem.instruction;
 
     Instruction memInst = ex_mem.instruction;
@@ -44,12 +49,16 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     }
     else if (memInst.opcode == OPCODE::SW) {
         memory.store(ex_mem.aluResult, ex_mem.operand2);
+        mem_wb.writeData = 0;
     }
     else {
         mem_wb.writeData = ex_mem.aluResult;
     }
 
 
+    // =========================
+    // EX STAGE
+    // =========================
     ex_mem.instruction = id_ex.instruction;
 
     Instruction exInst = id_ex.instruction;
@@ -57,7 +66,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     int op1 = id_ex.operand1;
     int op2 = id_ex.operand2;
 
-    forwardingUnit.resolveForwarding(id_ex,ex_mem,mem_wb,op1,op2);
+    // Forwarding
+    forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
+
     if (exInst.opcode == OPCODE::ADD) {
         ex_mem.aluResult = op1 + op2;
     }
@@ -72,37 +83,66 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         ex_mem.operand2 = op2;
     }
     else if (exInst.opcode == OPCODE::BNE) {
+
         if (op1 != op2) {
             pc = exInst.immediate;
             flush = true;
         }
     }
     else if (exInst.opcode == OPCODE::JAL) {
+
         ex_mem.aluResult = id_ex.pc + 1;
         pc = exInst.immediate;
         flush = true;
     }
 
 
-    id_ex.instruction = if_id.instruction;
-    id_ex.pc = if_id.pc;
+    // =========================
+    // HAZARD DETECTION
+    // =========================
+    stall = hazardUnit.shouldStall(if_id, id_ex);
 
-    Instruction idInst = if_id.instruction;
+    if (stall) {
 
-    if (idInst.opcode != OPCODE::NOP) {
+        stats.incrementStall();
 
-        if (idInst.rs1 >= 0)
-            id_ex.operand1 = registerFile.read(idInst.rs1);
-
-        if (idInst.rs2 >= 0)
-            id_ex.operand2 = registerFile.read(idInst.rs2);
+        // Insert bubble into EX stage
+        id_ex = {Instruction(), -1, 0, 0};
     }
-        
-        if (flush) {
+    else {
+
+        // =========================
+        // ID STAGE
+        // =========================
+        id_ex.instruction = if_id.instruction;
+        id_ex.pc = if_id.pc;
+
+        Instruction idInst = if_id.instruction;
+
+        id_ex.operand1 = 0;
+        id_ex.operand2 = 0;
+
+        if (idInst.opcode != OPCODE::NOP) {
+
+            if (idInst.rs1 >= 0)
+                id_ex.operand1 = registerFile.read(idInst.rs1);
+
+            if (idInst.rs2 >= 0)
+                id_ex.operand2 = registerFile.read(idInst.rs2);
+        }
+    }
+
+
+    // =========================
+    // IF STAGE
+    // =========================
+    if (flush) {
+
         if_id = {Instruction(), -1};
         flush = false;
     }
-    else {
+    else if (!stall) {
+
         if (pc < instructions.size()) {
             if_id.instruction = instructions[pc];
             if_id.pc = pc;
@@ -114,20 +154,17 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     }
 
 
+    // =========================
+    // CLOCK UPDATE
+    // =========================
     stats.incrementCycle();
 }
 
+
 bool Pipeline::hasPendingInstructions() const {
+
     return if_id.instruction.opcode != OPCODE::NOP ||
            id_ex.instruction.opcode != OPCODE::NOP ||
            ex_mem.instruction.opcode != OPCODE::NOP ||
            mem_wb.instruction.opcode != OPCODE::NOP;
 }
-/*
-Hazard detection
-Data forwarding
-Load-use stall
-Multi-cycle execution latency
-TODO implement them within a day 
-
-*/

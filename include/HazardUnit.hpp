@@ -2,10 +2,10 @@
 #include "Pipeline.hpp"
 
 class HazardUnit{
-    public:
-        bool shouldStall(const ID_EX& id_ex,
-                 const EX_MEM& ex_mem,
-                 const MEM_WB& mem_wb,
-                 bool forwardingEnabled);
-        bool shouldFlush(bool isBranchTaken);
-    };
+public:
+
+    bool shouldStall(const IF_ID& if_id,
+                     const ID_EX& id_ex);
+
+    bool shouldFlush(bool branchTaken);
+};

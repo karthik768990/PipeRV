@@ -6,6 +6,7 @@
 #include "Stats.hpp"
 #include "ConfigReader.hpp"
 #include "ForwardingUnit.hpp"
+#include "HazardUnit.hpp"
 struct IF_ID {
         Instruction instruction;
         int pc;
@@ -35,6 +36,7 @@ private:
 
 
     ForwardingUnit forwardingUnit;
+    HazardUnit hazardUnit;
     IF_ID if_id;
     ID_EX id_ex;
     EX_MEM ex_mem;
