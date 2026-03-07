@@ -7,5 +7,5 @@ class HazardUnit{
                  const EX_MEM& ex_mem,
                  const MEM_WB& mem_wb,
                  bool forwardingEnabled);
-        void shouldFlush(bool isBranchTaken);
+        bool shouldFlush(bool isBranchTaken);
     };
