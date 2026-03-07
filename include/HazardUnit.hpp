@@ -1,6 +1,9 @@
 #pragma once
-#include "Pipeline.hpp"
 
+struct ID_EX;
+struct EX_MEM;
+struct MEM_WB;
+struct IF_ID;
 class HazardUnit{
 public:
 
