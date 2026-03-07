@@ -29,4 +29,5 @@ public:
     void run();
 
     void reset();
+    const Stats& getStats() const { return stats; }
 };

@@ -5,6 +5,7 @@
 #include "Memory.hpp"
 #include "Stats.hpp"
 #include "ConfigReader.hpp"
+#include "ForwardingUnit.hpp"
 struct IF_ID {
         Instruction instruction;
         int pc;
@@ -33,7 +34,7 @@ class Pipeline {
 private:
 
 
-    
+    ForwardingUnit forwardingUnit;
     IF_ID if_id;
     ID_EX id_ex;
     EX_MEM ex_mem;

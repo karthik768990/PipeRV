@@ -57,6 +57,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     int op1 = id_ex.operand1;
     int op2 = id_ex.operand2;
 
+    forwardingUnit.resolveForwarding(id_ex,ex_mem,mem_wb,op1,op2);
     if (exInst.opcode == OPCODE::ADD) {
         ex_mem.aluResult = op1 + op2;
     }
