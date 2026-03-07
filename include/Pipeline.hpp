@@ -54,4 +54,7 @@ public:
               Memory& memory,
               Stats& stats,
               ConfigReader& config);
-};
+    
+    bool hasPendingInstructions() const;          
+
+            };

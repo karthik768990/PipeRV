@@ -28,3 +28,7 @@ double Stats::calculateIPC() const{
     if(cycleCount==0)return 0.0;
     return 1.0*instructionCount/cycleCount;
 }
+
+void Stats::reset(){
+            cycleCount=instructionCount=stallCount = 0;
+}

@@ -7,8 +7,9 @@ class Stats{
         long long stallCount;
     public:
         Stats(){
-            cycleCount=instructionCount=stallCount = 0;
-        }    
+            reset();
+        }  
+        void reset();
         void incrementCycle();
         void incrementInstruction();
         void incrementStall();

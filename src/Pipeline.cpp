@@ -116,6 +116,12 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     stats.incrementCycle();
 }
 
+bool Pipeline::hasPendingInstructions() const {
+    return if_id.instruction.opcode != OPCODE::NOP ||
+           id_ex.instruction.opcode != OPCODE::NOP ||
+           ex_mem.instruction.opcode != OPCODE::NOP ||
+           mem_wb.instruction.opcode != OPCODE::NOP;
+}
 /*
 Hazard detection
 Data forwarding
