@@ -213,7 +213,7 @@ Mohammed Owais, Karthikeya T
 ## Meeting – 24 Feb 2026
 
 **Members:**  
-Mohammed Owais, Karthikeya T 
+Mohammed Owais, Karthik Tamarapalli    
 
 ### Decisions
 - Designed the overall simulator structure  
@@ -243,3 +243,4 @@ This project is developed as part of the **CS209P Computer Architecture course p
 The code is intended for **academic purposes** and follows the project guidelines provided by the course instructors.
 
 ---
+
