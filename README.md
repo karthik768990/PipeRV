@@ -232,7 +232,7 @@ Mohammed Owais, Karthik Tamarapalli
 # Contributors
 
 - Mohammed Owais  
-- Karthikeya T 
+- Karthikeya Tamarapalli 
 
 ---
 
@@ -243,4 +243,5 @@ This project is developed as part of the **CS209P Computer Architecture course p
 The code is intended for **academic purposes** and follows the project guidelines provided by the course instructors.
 
 ---
+
 
