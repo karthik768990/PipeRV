@@ -30,5 +30,6 @@ public:
 
     void reset();
     void dumpMemory(int start, int end) const;
+    void setConfig(const ConfigReader& config);
     const Stats& getStats() const { return stats; }
 };

@@ -41,3 +41,6 @@
     void CPU::dumpMemory(int start, int end) const {
         memory.dumpMemory(start, end);
     }
+    void CPU::setConfig(const ConfigReader& config) {
+    this->config = config;
+}

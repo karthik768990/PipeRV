@@ -59,16 +59,15 @@ void Pipeline::reset() {
     // =========================
     // EX STAGE
     // =========================
-    ex_mem.instruction = id_ex.instruction;
-
     Instruction exInst = id_ex.instruction;
 
-    int op1 = id_ex.operand1;
-    int op2 = id_ex.operand2;
+int op1 = id_ex.operand1;
+int op2 = id_ex.operand2;
 
-    // Forwarding
-    forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
+// Forwarding (use previous EX/MEM)
+forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
 
+ex_mem.instruction = id_ex.instruction;
     if (exInst.opcode == OPCODE::ADD) {
         ex_mem.aluResult = op1 + op2;
     }
@@ -136,11 +135,12 @@ void Pipeline::reset() {
     // =========================
     // IF STAGE
     // =========================
-    if (flush) {
+if (flush) {
 
-        if_id = {Instruction(), -1};
-        flush = false;
-    }
+    if_id = {Instruction(), -1};
+    id_ex = {Instruction(), -1, 0, 0};   // flush ID stage also
+    flush = false;
+}
     else if (!stall) {
 
         if (pc < instructions.size()) {

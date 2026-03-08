@@ -16,10 +16,13 @@ int main(int argc, char* argv[]) {
     ConfigReader config;
     config.loadConfig(configFile);
 
+
     Parser parser;
     std::vector<Instruction> program = parser.parse(programFile);
+    std::cout << "Parsed instructions: " << program.size() << std::endl;
     
     CPU cpu;
+    cpu.setConfig(config);
     cpu.loadProgram(program);
     std::cout << "\nInitial Memory State\n";
     cpu.dumpMemory(0, 16);
