@@ -6,6 +6,8 @@ LW,
 SW,
 BNE,
 JAL,
+BLT,
+BGE,
 COUNT};
 
 class Instruction{

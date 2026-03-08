@@ -1,4 +1,4 @@
-# Bubble Sort for 5 positive numbers
+# Bubble Sort for 5 numbers
 # array base address = 0
 
 # --- Initialize Array ---
@@ -50,44 +50,20 @@ compare:
 add x17, x14, x14
 add x17, x17, x17
 
-# Load array[j] into x18
-lw x18, 0(x17)
+lw x18, 0(x17)           # x18 = array[j]
 
-# Load array[j+1] into x20
 addi x19, x17, 4
-lw x20, 0(x19)
+lw x20, 0(x19)           # x20 = array[j+1]
 
-# ==========================================
-# SOFTWARE "GREATER THAN" CHECK
-# We want to swap if x18 > x20
-# ==========================================
-# Make temporary copies to decrement
-addi x22, x18, 0       # temp_left = array[j]
-addi x23, x20, 0       # temp_right = array[j+1]
-
-find_max_loop:
-# Check if the right number (x23) hit 0 first
-bne x23, x0, check_left_zero
-bne x22, x0, do_swap   # Right is 0, Left is > 0. Left is bigger! SWAP!
-jal x0, skip_swap      # Both are 0. They are equal. Do not swap.
-
-check_left_zero:
-# Check if the left number (x22) hit 0 first
-bne x22, x0, decrement_both
-jal x0, skip_swap      # Left is 0, Right is > 0. Right is bigger. Do not swap.
-
-decrement_both:
-addi x22, x22, -1
-addi x23, x23, -1
-jal x0, find_max_loop
-# ==========================================
+# If array[j+1] < array[j], SWAP!
+blt x20, x18, do_swap
+jal x0, skip_swap
 
 # --- Swap Elements ---
 do_swap:
 sw x20, 0(x17)
 sw x18, 0(x19)
 
-# --- Next Inner Iteration ---
 skip_swap:
 addi x14, x14, 1
 jal x0, inner_loop

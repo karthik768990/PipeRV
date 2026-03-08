@@ -1,68 +1,70 @@
-#include "ConfigReader.hpp"
-#include <fstream>
-#include <cstring>
-#include <sstream>
-#include <assert.h>
-#include <cctype>
+    #include "ConfigReader.hpp"
+    #include <fstream>
+    #include <cstring>
+    #include <sstream>
+    #include <assert.h>
+    #include <cctype>
 
-void ConfigReader::setDefaultLatencies(){
-    for(int i=0;i<static_cast<int> (OPCODE::COUNT);i++)latency[i]=1;
-}
-
-int ConfigReader::getLatency(OPCODE opcode) const{
-    return latency[static_cast<int>(opcode)];
-}
-
-bool ConfigReader::isForwardingEnabled() const{
-    return forwardingEnabled;
-}
-static void toUpper(std::string& s){
-    for(char& c : s){
-        c = toupper(c);
+    void ConfigReader::setDefaultLatencies(){
+        for(int i=0;i<static_cast<int> (OPCODE::COUNT);i++)latency[i]=1;
     }
-}
-void ConfigReader::loadConfig(const std::string& filename){
-    std::ifstream file(filename);
-    assert(file.is_open());
 
-    std::string line;
+    int ConfigReader::getLatency(OPCODE opcode) const{
+        return latency[static_cast<int>(opcode)];
+    }
 
-    while (std::getline(file, line)) {
+    bool ConfigReader::isForwardingEnabled() const{
+        return forwardingEnabled;
+    }
+    static void toUpper(std::string& s){
+        for(char& c : s){
+            c = toupper(c);
+        }
+    }
+    void ConfigReader::loadConfig(const std::string& filename){
+        std::ifstream file(filename);
+        assert(file.is_open());
 
-        if (line.empty()) continue;
+        std::string line;
 
-        std::stringstream ss(line);
-        std::string key, value;
+        while (std::getline(file, line)) {
 
-        if (!std::getline(ss, key, '=')) continue;
-        if (!std::getline(ss, value)) continue;
+            if (line.empty()) continue;
 
-        int val = std::stoi(value);
-        toUpper(key); // tot make the simulator case insensitive 
+            std::stringstream ss(line);
+            std::string key, value;
+
+            if (!std::getline(ss, key, '=')) continue;
+            if (!std::getline(ss, value)) continue;
+
+            int val = std::stoi(value);
+            toUpper(key); // tot make the simulator case insensitive 
 
 
-        if (key == "FORWARDING") {
-            forwardingEnabled = (val != 0);
-            continue;
+            if (key == "FORWARDING") {
+                forwardingEnabled = (val != 0);
+                continue;
+            }
+
+            OPCODE opcode;
+
+            if (key == "ADD") opcode = OPCODE::ADD;
+            else if (key == "SUB") opcode = OPCODE::SUB;
+            else if (key == "ADDI") opcode = OPCODE::ADDI;
+            else if (key == "LW") opcode = OPCODE::LW;
+            else if (key == "SW") opcode = OPCODE::SW;
+            else if (key == "BNE") opcode = OPCODE::BNE;
+            else if (key == "JAL") opcode = OPCODE::JAL;
+            else if(key=="BLT")opcode = OPCODE::BLT;
+            else if(key=="BGE")opcode = OPCODE::BGE;
+            else continue;
+
+            latency[static_cast<int>(opcode)] = val;
         }
 
-        OPCODE opcode;
-
-        if (key == "ADD") opcode = OPCODE::ADD;
-        else if (key == "SUB") opcode = OPCODE::SUB;
-        else if (key == "ADDI") opcode = OPCODE::ADDI;
-        else if (key == "LW") opcode = OPCODE::LW;
-        else if (key == "SW") opcode = OPCODE::SW;
-        else if (key == "BNE") opcode = OPCODE::BNE;
-        else if (key == "JAL") opcode = OPCODE::JAL;
-        else continue;
-
-        latency[static_cast<int>(opcode)] = val;
+        validateConfig();
     }
 
-    validateConfig();
-}
-
-void ConfigReader::validateConfig(){
-    for(int i=0;i<static_cast<int> (OPCODE::COUNT);i++) assert(latency[i]>0);
-}
+    void ConfigReader::validateConfig(){
+        for(int i=0;i<static_cast<int> (OPCODE::COUNT);i++) assert(latency[i]>0);
+    }

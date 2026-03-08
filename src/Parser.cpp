@@ -79,6 +79,8 @@ OPCODE Parser::convertOpCode(const std::string& opCodeString){
     if(opString=="ADD")return OPCODE::ADD;
     else if(opString=="ADDI")return OPCODE::ADDI;
     else if(opString=="BNE")return OPCODE::BNE;
+    else if(opString=="BLT")return OPCODE::BLT; // Added
+    else if(opString=="BGE")return OPCODE::BGE; // Added
     else if(opString=="LW") return OPCODE::LW;
     else if(opString=="SUB")return OPCODE::SUB;
     else if(opString=="SW")return OPCODE::SW;
@@ -104,32 +106,31 @@ Instruction Parser::parseLineToInstruction(const std::string& instructionLine){
         Instruction instruction(opcode,rd,rs1,-1,imme);
         return instruction;
     }else if(opcode==OPCODE::LW){
-    int rd = parseRegister(tokens[1]);
-    int offset = std::stoi(tokens[2]);
-    int rs1 = parseRegister(tokens[3]);
-    return Instruction(opcode, rd, rs1, -1, offset);
-}
+        int rd = parseRegister(tokens[1]);
+        int offset = std::stoi(tokens[2]);
+        int rs1 = parseRegister(tokens[3]);
+        return Instruction(opcode, rd, rs1, -1, offset);
+    }
+    else if(opcode==OPCODE::SW){
+        int rs2 = parseRegister(tokens[1]);
+        int offset = std::stoi(tokens[2]);
+        int rs1 = parseRegister(tokens[3]);
+        return Instruction(opcode, -1, rs1, rs2, offset);
+    }
+    // Added BLT and BGE here since they branch just like BNE
+    else if(opcode == OPCODE::BNE || opcode == OPCODE::BLT || opcode == OPCODE::BGE){
+        int rs1 = parseRegister(tokens[1]);
+        int rs2 = parseRegister(tokens[2]);
+        int target = labelMap[tokens[3]];
+        return Instruction(opcode, -1, rs1, rs2, target);
+    }
+    else if(opcode == OPCODE::JAL){
+        int rd = parseRegister(tokens[1]);
+        int target = labelMap[tokens[2]];
+        return Instruction(opcode, rd, -1, -1, target);
+    }
 
-else if(opcode==OPCODE::SW){
-    int rs2 = parseRegister(tokens[1]);
-    int offset = std::stoi(tokens[2]);
-    int rs1 = parseRegister(tokens[3]);
-    return Instruction(opcode, -1, rs1, rs2, offset);
-}
-else if(opcode == OPCODE::BNE){
-    int rs1 = parseRegister(tokens[1]);
-    int rs2 = parseRegister(tokens[2]);
-    int target = labelMap[tokens[3]];
-    return Instruction(opcode, -1, rs1, rs2, target);
-}
-
-else if(opcode == OPCODE::JAL){
-    int rd = parseRegister(tokens[1]);
-    int target = labelMap[tokens[2]];
-    return Instruction(opcode, rd, -1, -1, target);
-}
-
-return Instruction();
+    return Instruction();
 }
 
 std::pair<int,int> Parser::parseMemoryOperand(const std::string& operand){
