@@ -68,6 +68,7 @@ if(config.isForwardingEnabled())
 
 ex_mem.instruction = exInst;
 ex_mem.operand2 = 0;
+ex_mem.aluResult = 0;
 
 if (exInst.opcode == OPCODE::ADD) {
     ex_mem.aluResult = op1 + op2;
