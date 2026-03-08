@@ -15,12 +15,12 @@ void Pipeline::reset() {
     mem_wb = {Instruction(), 0};
 }
 
- void Pipeline::step(std::vector<Instruction>& instructions,
-              int& pc,
-              RegisterFile& registerFile,
-              Memory& memory,
-              Stats& stats,
-              ConfigReader& config) {
+void Pipeline::step(std::vector<Instruction>& instructions,
+                    int& pc,
+                    RegisterFile& registerFile,
+                    Memory& memory,
+                    Stats& stats,
+                    ConfigReader& config) {
 
     // =========================
     // WB STAGE
@@ -35,7 +35,6 @@ void Pipeline::reset() {
 
         stats.incrementInstruction();
     }
-
 
     // =========================
     // MEM STAGE
@@ -55,47 +54,55 @@ void Pipeline::reset() {
         mem_wb.writeData = ex_mem.aluResult;
     }
 
-
-    // =========================
-    // EX STAGE
-    // =========================
-    Instruction exInst = id_ex.instruction;
+// =========================
+// EX STAGE
+// =========================
+Instruction exInst = id_ex.instruction;
 
 int op1 = id_ex.operand1;
 int op2 = id_ex.operand2;
 
-// Forwarding (use previous EX/MEM)
-forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
+// Forwarding (only affects arithmetic operands)
+if(config.isForwardingEnabled())
+    forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
 
-ex_mem.instruction = id_ex.instruction;
-    if (exInst.opcode == OPCODE::ADD) {
-        ex_mem.aluResult = op1 + op2;
-    }
-    else if (exInst.opcode == OPCODE::SUB) {
-        ex_mem.aluResult = op1 - op2;
-    }
-    else if (exInst.opcode == OPCODE::ADDI) {
-        ex_mem.aluResult = op1 + exInst.immediate;
-    }
-    else if (exInst.opcode == OPCODE::LW || exInst.opcode == OPCODE::SW) {
-        ex_mem.aluResult = op1 + exInst.immediate;
-        ex_mem.operand2 = op2;
-    }
-    else if (exInst.opcode == OPCODE::BNE) {
+ex_mem.instruction = exInst;
+ex_mem.operand2 = 0;
+
+if (exInst.opcode == OPCODE::ADD) {
+    ex_mem.aluResult = op1 + op2;
+}
+else if (exInst.opcode == OPCODE::SUB) {
+    ex_mem.aluResult = op1 - op2;
+}
+else if (exInst.opcode == OPCODE::ADDI) {
+    ex_mem.aluResult = op1 + exInst.immediate;
+}
+else if (exInst.opcode == OPCODE::LW) {
+    ex_mem.aluResult = op1 + exInst.immediate;
+}
+else if (exInst.opcode == OPCODE::SW) {
+
+    // address = base + offset
+    ex_mem.aluResult = op1 + exInst.immediate;
+
+    // IMPORTANT: store value must come from the register file,
+    // NOT from forwarded operand2
+    ex_mem.operand2 = id_ex.operand2;
+}
+else if (exInst.opcode == OPCODE::BNE) {
 
     if (op1 != op2) {
         pc = exInst.immediate;
         flush = true;
     }
 }
-    else if (exInst.opcode == OPCODE::JAL) {
+else if (exInst.opcode == OPCODE::JAL) {
 
-        ex_mem.aluResult = id_ex.pc + 1;
-        pc = exInst.immediate;
-        flush = true;
-    }
-
-
+    ex_mem.aluResult = id_ex.pc + 1;
+    pc = exInst.immediate;
+    flush = true;
+}
     // =========================
     // HAZARD DETECTION
     // =========================
@@ -105,7 +112,7 @@ ex_mem.instruction = id_ex.instruction;
 
         stats.incrementStall();
 
-        // Insert bubble into EX stage
+        // Insert bubble
         id_ex = {Instruction(), -1, 0, 0};
     }
     else {
@@ -131,18 +138,17 @@ ex_mem.instruction = id_ex.instruction;
         }
     }
 
-
     // =========================
     // IF STAGE
     // =========================
-if (flush) {
+    if (flush) {
 
-    if_id = {Instruction(), -1};
-    id_ex = {Instruction(), -1, 0, 0};
-    ex_mem = {Instruction(), 0, 0};
+        if_id = {Instruction(), -1};
+        id_ex = {Instruction(), -1, 0, 0};
+        ex_mem = {Instruction(), 0, 0};
 
-    flush = false;
-}
+        flush = false;
+    }
     else if (!stall) {
 
         if (pc < instructions.size()) {
@@ -155,13 +161,11 @@ if (flush) {
         }
     }
 
-
     // =========================
     // CLOCK UPDATE
     // =========================
     stats.incrementCycle();
 }
-
 
 bool Pipeline::hasPendingInstructions() const {
 
