@@ -105,16 +105,17 @@ Instruction Parser::parseLineToInstruction(const std::string& instructionLine){
         return instruction;
     }else if(opcode==OPCODE::LW){
     int rd = parseRegister(tokens[1]);
-    auto [offset, rs1] = parseMemoryOperand(tokens[2]);
+    int offset = std::stoi(tokens[2]);
+    int rs1 = parseRegister(tokens[3]);
     return Instruction(opcode, rd, rs1, -1, offset);
 }
 
 else if(opcode==OPCODE::SW){
     int rs2 = parseRegister(tokens[1]);
-    auto [offset, rs1] = parseMemoryOperand(tokens[2]);
+    int offset = std::stoi(tokens[2]);
+    int rs1 = parseRegister(tokens[3]);
     return Instruction(opcode, -1, rs1, rs2, offset);
 }
-
 else if(opcode == OPCODE::BNE){
     int rs1 = parseRegister(tokens[1]);
     int rs2 = parseRegister(tokens[2]);
