@@ -23,27 +23,22 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     Stats& stats,
                     ConfigReader& config) {
 
-
+    // =========================================================
+    // 0. WB STAGE (Simulate falling-edge write)
+    // =========================================================
+    // This MUST happen first so the ID stage can read fresh data in this cycle
+    Instruction wbInst = mem_wb.instruction;
     
-        // =========================================================
-        // 5. WB STAGE
-        // =========================================================
-        Instruction wbInst = mem_wb.instruction;
-    
-        if (wbInst.opcode != OPCODE::NOP) {
-            if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW && wbInst.opcode != OPCODE::BNE) {
-                registerFile.write(wbInst.rd, mem_wb.writeData);
-            }
-            stats.incrementInstruction();
+    if (wbInst.opcode != OPCODE::NOP) {
+        // Prevent writing to x0, and prevent SW/BNE from writing garbage
+        if (wbInst.rd > 0 && wbInst.opcode != OPCODE::SW && wbInst.opcode != OPCODE::BNE) {
+            registerFile.write(wbInst.rd, mem_wb.writeData);
         }
-    
-        // =========================================================
-        // 6. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
-        // =========================================================
-        
-                    
-// =========================================================
-    // 1. CREATE "NEXT STATE" BUFFERS
+        stats.incrementInstruction();
+    }
+
+    // =========================================================
+    // 1. CREATE "NEXT STATE" BUFFERS (Double Buffering)
     // =========================================================
     IF_ID next_if_id = if_id;
     ID_EX next_id_ex = id_ex;
@@ -69,8 +64,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             next_if_id.instruction = Instruction();
         }
     }
-    // (If current_stall is true, next_if_id safely keeps the old instruction
-    // because we initialized it with `next_if_id = if_id` above!)
+    // If current_stall is true, next_if_id safely keeps the old instruction
 
     // =========================================================
     // 4. ID STAGE
@@ -92,15 +86,11 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     // =========================================================
     // 5. EX STAGE
     // =========================================================
-    // ... [Keep EX and MEM exactly the same as you have them] ...
-    // =========================================================
-    // 3. EX STAGE
-    // =========================================================
     Instruction exInst = id_ex.instruction;
     int op1 = id_ex.operand1;
     int op2 = id_ex.operand2;
 
-    // Forwarding is safe now! We read from the current ex_mem/mem_wb registers.
+    // Forwarding is safe! We read from the current ex_mem/mem_wb registers.
     if (config.isForwardingEnabled()) {
         forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
     }
@@ -109,10 +99,18 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     next_ex_mem.operand2 = 0;
     next_ex_mem.aluResult = 0;
 
-    if (exInst.opcode == OPCODE::ADD) next_ex_mem.aluResult = op1 + op2;
-    else if (exInst.opcode == OPCODE::SUB) next_ex_mem.aluResult = op1 - op2;
-    else if (exInst.opcode == OPCODE::ADDI) next_ex_mem.aluResult = op1 + exInst.immediate;
-    else if (exInst.opcode == OPCODE::LW) next_ex_mem.aluResult = op1 + exInst.immediate;
+    if (exInst.opcode == OPCODE::ADD) {
+        next_ex_mem.aluResult = op1 + op2;
+    }
+    else if (exInst.opcode == OPCODE::SUB) {
+        next_ex_mem.aluResult = op1 - op2;
+    }
+    else if (exInst.opcode == OPCODE::ADDI) {
+        next_ex_mem.aluResult = op1 + exInst.immediate;
+    }
+    else if (exInst.opcode == OPCODE::LW) {
+        next_ex_mem.aluResult = op1 + exInst.immediate;
+    }
     else if (exInst.opcode == OPCODE::SW) {
         next_ex_mem.aluResult = op1 + exInst.immediate; // Base address
         next_ex_mem.operand2 = op2;                     // Store value MUST be forwarded op2
@@ -134,8 +132,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_if_id = {Instruction(), -1};
         next_id_ex = {Instruction(), -1, 0, 0};
     }
+
     // =========================================================
-    // 4. MEM STAGE
+    // 6. MEM STAGE
     // =========================================================
     next_mem_wb.instruction = ex_mem.instruction;
     Instruction memInst = ex_mem.instruction;
@@ -151,21 +150,25 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_mem_wb.writeData = ex_mem.aluResult;
     }
     
-    // // Logging & Stats
+    // Uncomment these to debug your pipeline flow if needed!
     // std::cout << "Cycle " << stats.getCycleCount() << " | "
     //           << "IF: " << (int)if_id.instruction.opcode << " "
     //           << "ID: " << (int)id_ex.instruction.opcode << " "
     //           << "EX: " << (int)ex_mem.instruction.opcode << " "
     //           << "MEM: " << (int)mem_wb.instruction.opcode << std::endl;
 
+    // =========================================================
+    // 7. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
+    // =========================================================
     if_id = next_if_id;
-        id_ex = next_id_ex;
-        ex_mem = next_ex_mem;
-        mem_wb = next_mem_wb;
+    id_ex = next_id_ex;
+    ex_mem = next_ex_mem;
+    mem_wb = next_mem_wb;
+
     stats.incrementCycle();
 }
-bool Pipeline::hasPendingInstructions() const {
 
+bool Pipeline::hasPendingInstructions() const {
     return if_id.instruction.opcode != OPCODE::NOP ||
            id_ex.instruction.opcode != OPCODE::NOP ||
            ex_mem.instruction.opcode != OPCODE::NOP ||
