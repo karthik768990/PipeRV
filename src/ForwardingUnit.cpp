@@ -16,7 +16,8 @@ if (rs1 >= 0) {
     if (ex_mem.instruction.rd == rs1 &&
         ex_mem.instruction.rd >= 0 &&
         ex_mem.instruction.opcode != OPCODE::SW &&
-        ex_mem.instruction.opcode != OPCODE::LW) {
+        ex_mem.instruction.opcode != OPCODE::LW &&
+ex_mem.instruction.opcode != OPCODE::NOP) {
 
         operand1 = ex_mem.aluResult;
     }
@@ -35,7 +36,8 @@ if (rs1 >= 0) {
         if (ex_mem.instruction.rd == rs2 &&
             ex_mem.instruction.rd >= 0 &&
             ex_mem.instruction.opcode != OPCODE::SW&&
-        ex_mem.instruction.opcode != OPCODE::LW) {
+        ex_mem.instruction.opcode != OPCODE::LW &&
+ex_mem.instruction.opcode != OPCODE::NOP) {
 
             operand2 = ex_mem.aluResult;
         }

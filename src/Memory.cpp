@@ -3,6 +3,9 @@
 #include <iostream>
 int Memory::load(int address) const{
     assert(address >= 0);
+if(address % 4 != 0){
+    std::cout << "INVALID ADDRESS ACCESS: " << address << std::endl;
+}
     assert(address % 4 == 0);
     assert(address < mem_size * 4);
 
