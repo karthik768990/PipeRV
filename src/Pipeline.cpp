@@ -83,11 +83,11 @@ ex_mem.instruction = id_ex.instruction;
     }
     else if (exInst.opcode == OPCODE::BNE) {
 
-        if (op1 != op2) {
-            pc = exInst.immediate;
-            flush = true;
-        }
+    if (op1 != op2) {
+        pc = exInst.immediate;
+        flush = true;
     }
+}
     else if (exInst.opcode == OPCODE::JAL) {
 
         ex_mem.aluResult = id_ex.pc + 1;
@@ -138,7 +138,9 @@ ex_mem.instruction = id_ex.instruction;
 if (flush) {
 
     if_id = {Instruction(), -1};
-    id_ex = {Instruction(), -1, 0, 0};   // flush ID stage also
+    id_ex = {Instruction(), -1, 0, 0};
+    ex_mem = {Instruction(), 0, 0};
+
     flush = false;
 }
     else if (!stall) {
