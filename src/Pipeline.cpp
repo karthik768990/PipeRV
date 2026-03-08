@@ -23,6 +23,26 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     Stats& stats,
                     ConfigReader& config) {
 
+
+    
+        // =========================================================
+        // 5. WB STAGE
+        // =========================================================
+        Instruction wbInst = mem_wb.instruction;
+    
+        if (wbInst.opcode != OPCODE::NOP) {
+            if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW) {
+                registerFile.write(wbInst.rd, mem_wb.writeData);
+            }
+            stats.incrementInstruction();
+        }
+    
+        // =========================================================
+        // 6. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
+        // =========================================================
+        
+                    
+
     // =========================================================
     // 0. CREATE "NEXT STATE" BUFFERS (Double Buffering)
     // =========================================================
@@ -120,27 +140,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     else {
         next_mem_wb.writeData = ex_mem.aluResult;
     }
-
-    // =========================================================
-    // 5. WB STAGE
-    // =========================================================
-    Instruction wbInst = mem_wb.instruction;
-
-    if (wbInst.opcode != OPCODE::NOP) {
-        if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW) {
-            registerFile.write(wbInst.rd, mem_wb.writeData);
-        }
-        stats.incrementInstruction();
-    }
-
-    // =========================================================
-    // 6. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
-    // =========================================================
-    if_id = next_if_id;
-    id_ex = next_id_ex;
-    ex_mem = next_ex_mem;
-    mem_wb = next_mem_wb;
-
+    
     // // Logging & Stats
     // std::cout << "Cycle " << stats.getCycleCount() << " | "
     //           << "IF: " << (int)if_id.instruction.opcode << " "
@@ -148,6 +148,10 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     //           << "EX: " << (int)ex_mem.instruction.opcode << " "
     //           << "MEM: " << (int)mem_wb.instruction.opcode << std::endl;
 
+    if_id = next_if_id;
+        id_ex = next_id_ex;
+        ex_mem = next_ex_mem;
+        mem_wb = next_mem_wb;
     stats.incrementCycle();
 }
 bool Pipeline::hasPendingInstructions() const {
