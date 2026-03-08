@@ -37,3 +37,7 @@
                       config);
     }
     }
+
+    void CPU::dumpMemory(int start, int end) const {
+        memory.dumpMemory(start, end);
+    }

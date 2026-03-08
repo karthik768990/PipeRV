@@ -13,4 +13,5 @@ class Memory{
         int load(int address) const;
         void store(int address,int value);
         void reset();
-};
+        void dumpMemory(int start, int end) const;
+    };

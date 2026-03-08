@@ -29,5 +29,6 @@ public:
     void run();
 
     void reset();
+    void dumpMemory(int start, int end) const;
     const Stats& getStats() const { return stats; }
 };

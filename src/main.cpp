@@ -18,12 +18,15 @@ int main(int argc, char* argv[]) {
 
     Parser parser;
     std::vector<Instruction> program = parser.parse(programFile);
-
+    
     CPU cpu;
     cpu.loadProgram(program);
+    std::cout << "\nInitial Memory State\n";
+    cpu.dumpMemory(0, 16);
 
     cpu.run();
-
+    std::cout << "\nFinal Memory State\n";
+    cpu.dumpMemory(0, 16);
     const Stats& stats = cpu.getStats();
 
     std::cout << "Execution finished\n";

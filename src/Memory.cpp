@@ -1,6 +1,6 @@
 #include <assert.h>
 #include "Memory.hpp"
-
+#include <iostream>
 int Memory::load(int address) const{
     assert(address >= 0);
     assert(address % 4 == 0);
@@ -23,4 +23,11 @@ void Memory::reset(){
     for(int i=0;i<Memory::mem_size;i++){
         mem[i]=0;
     }
+}
+void Memory::dumpMemory(int start, int end) const{
+
+    for(int addr = start; addr <= end; addr += 4){
+        std::cout << "mem[" << addr << "] = " << load(addr) << std::endl;
+    }
+
 }
