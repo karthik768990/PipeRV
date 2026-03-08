@@ -31,7 +31,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         Instruction wbInst = mem_wb.instruction;
     
         if (wbInst.opcode != OPCODE::NOP) {
-            if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW) {
+            if (wbInst.rd >= 0 && wbInst.opcode != OPCODE::SW && wbInst.opcode != OPCODE::BNE) {
                 registerFile.write(wbInst.rd, mem_wb.writeData);
             }
             stats.incrementInstruction();
@@ -42,20 +42,24 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         // =========================================================
         
                     
-
+// =========================================================
+    // 1. CREATE "NEXT STATE" BUFFERS
     // =========================================================
-    // 0. CREATE "NEXT STATE" BUFFERS (Double Buffering)
-    // =========================================================
-    // We write to these during the cycle so we don't clobber the current state.
     IF_ID next_if_id = if_id;
     ID_EX next_id_ex = id_ex;
     EX_MEM next_ex_mem = ex_mem;
     MEM_WB next_mem_wb = mem_wb;
 
     // =========================================================
-    // 1. IF STAGE
+    // 2. HAZARD DETECTION (Calculate FIRST!)
     // =========================================================
-    if (!stall) {
+    bool current_stall = hazardUnit.shouldStall(if_id, id_ex);
+
+    // =========================================================
+    // 3. IF STAGE
+    // =========================================================
+    // Only fetch if we are NOT stalling this cycle
+    if (!current_stall) {
         if (pc < instructions.size()) {
             next_if_id.instruction = instructions[pc];
             next_if_id.pc = pc;
@@ -65,15 +69,16 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             next_if_id.instruction = Instruction();
         }
     }
+    // (If current_stall is true, next_if_id safely keeps the old instruction
+    // because we initialized it with `next_if_id = if_id` above!)
 
     // =========================================================
-    // 2. ID STAGE & HAZARD DETECTION
+    // 4. ID STAGE
     // =========================================================
-    stall = hazardUnit.shouldStall(if_id, id_ex);
-
-    if (stall) { 
+    if (current_stall) { 
         stats.incrementStall();
-        next_id_ex = {Instruction(), -1, 0, 0}; // Insert bubble
+        // Insert a bubble into EX to satisfy the stall
+        next_id_ex = {Instruction(), -1, 0, 0}; 
     }
     else {
         next_id_ex.instruction = if_id.instruction;
@@ -83,6 +88,11 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand1 = (idInst.rs1 >= 0) ? registerFile.read(idInst.rs1) : 0;
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
+
+    // =========================================================
+    // 5. EX STAGE
+    // =========================================================
+    // ... [Keep EX and MEM exactly the same as you have them] ...
     // =========================================================
     // 3. EX STAGE
     // =========================================================

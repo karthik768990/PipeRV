@@ -17,6 +17,7 @@ if (rs1 >= 0) {
         ex_mem.instruction.rd >= 0 &&
         ex_mem.instruction.opcode != OPCODE::SW &&
         ex_mem.instruction.opcode != OPCODE::LW &&
+        ex_mem.instruction.opcode != OPCODE::BNE &&
 ex_mem.instruction.opcode != OPCODE::NOP) {
 
         operand1 = ex_mem.aluResult;
@@ -25,6 +26,7 @@ ex_mem.instruction.opcode != OPCODE::NOP) {
     else if (mem_wb.instruction.rd == rs1 &&
              mem_wb.instruction.rd >= 0 &&
              mem_wb.instruction.opcode != OPCODE::SW &&
+        ex_mem.instruction.opcode != OPCODE::BNE &&
              mem_wb.instruction.opcode != OPCODE::NOP) {
 
         operand1 = mem_wb.writeData;
@@ -37,6 +39,7 @@ ex_mem.instruction.opcode != OPCODE::NOP) {
         if (ex_mem.instruction.rd == rs2 &&
             ex_mem.instruction.rd >= 0 &&
             ex_mem.instruction.opcode != OPCODE::SW&&
+        ex_mem.instruction.opcode != OPCODE::BNE &&
         ex_mem.instruction.opcode != OPCODE::LW &&
 ex_mem.instruction.opcode != OPCODE::NOP) {
 
@@ -46,6 +49,7 @@ ex_mem.instruction.opcode != OPCODE::NOP) {
         else if (mem_wb.instruction.rd == rs2 &&
                  mem_wb.instruction.rd >= 0 &&
                  mem_wb.instruction.opcode != OPCODE::SW &&
+        ex_mem.instruction.opcode != OPCODE::BNE &&
                  mem_wb.instruction.opcode != OPCODE::NOP) {
 
             operand2 = mem_wb.writeData;

@@ -12,7 +12,7 @@ bool HazardUnit::shouldStall(const IF_ID& if_id,
 
         int loadDest = exInst.rd;
 
-        if (loadDest >= 0) {
+        if (loadDest > 0) {
 
             if (loadDest == idInst.rs1 ||
                 loadDest == idInst.rs2) {
