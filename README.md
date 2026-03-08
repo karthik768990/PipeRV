@@ -236,6 +236,19 @@ Mohammed Owais, Karthik Tamarapalli
 
 ---
 
+# Running of the simulator can be done by the following ways 
+## Compiling the simulator 
+   - Compile the simulator using the following command
+     ```bash
+      g++ -std=c++17 src/*.cpp -Iinclude -o simulator
+     ```
+
+## Running the simulator 
+   - Run the simulator using the following command
+
+      ```bash
+               ./simulator input/config.txt input/bubble_sort.asm
+     ```
 # License
 
 This project is developed as part of the **CS209P Computer Architecture course project at IIT Tirupati**.
@@ -243,5 +256,6 @@ This project is developed as part of the **CS209P Computer Architecture course p
 The code is intended for **academic purposes** and follows the project guidelines provided by the course instructors.
 
 ---
+
 
 
