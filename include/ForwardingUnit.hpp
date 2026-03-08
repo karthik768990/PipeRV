@@ -1,5 +1,9 @@
 #pragma once
-#include "Pipeline.hpp"
+
+struct IF_ID;
+struct ID_EX;
+struct EX_MEM;
+struct MEM_WB;
 
 class ForwardingUnit{
     public:

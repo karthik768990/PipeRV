@@ -1,4 +1,5 @@
 #include "ForwardingUnit.hpp"
+#include "Pipeline.hpp"
 
 void ForwardingUnit::resolveForwarding(const ID_EX& id_ex,
                                        const EX_MEM& ex_mem,

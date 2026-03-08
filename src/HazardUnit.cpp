@@ -1,4 +1,5 @@
 #include "HazardUnit.hpp"
+#include "Pipeline.hpp"
 
 bool HazardUnit::shouldStall(const IF_ID& if_id,
                              const ID_EX& id_ex)

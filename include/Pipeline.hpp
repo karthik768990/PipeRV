@@ -62,5 +62,5 @@ public:
               ConfigReader& config);
     
     bool hasPendingInstructions() const;          
-
-            };
+    
+};
