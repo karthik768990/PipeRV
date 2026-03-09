@@ -23,9 +23,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     Stats& stats,
                     ConfigReader& config) {
 
-    // =========================================================
+    
     // 0. WB STAGE (Simulate falling-edge write)
-    // =========================================================
+    
     Instruction wbInst = mem_wb.instruction;
     
     if (wbInst.opcode != OPCODE::NOP) {
@@ -40,22 +40,22 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         stats.incrementInstruction();
     }
 
-    // =========================================================
+    
     // 1. CREATE "NEXT STATE" BUFFERS (Double Buffering)
-    // =========================================================
+    
     IF_ID next_if_id = if_id;
     ID_EX next_id_ex = id_ex;
     EX_MEM next_ex_mem = ex_mem;
     MEM_WB next_mem_wb = mem_wb;
 
-    // =========================================================
+    
     // 2. HAZARD DETECTION (Calculate FIRST!)
-    // =========================================================
+    
     bool current_stall = hazardUnit.shouldStall(if_id, id_ex);
 
-    // =========================================================
+    
     // 3. IF STAGE
-    // =========================================================
+    
     if (!current_stall) {
         if (pc < instructions.size()) {
             next_if_id.instruction = instructions[pc];
@@ -67,9 +67,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // =========================================================
+    
     // 4. ID STAGE
-    // =========================================================
+    
     if (current_stall) { 
         stats.incrementStall();
         next_id_ex = {Instruction(), -1, 0, 0}; 
@@ -83,9 +83,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
 
-    // =========================================================
+    
     // 5. EX STAGE
-    // =========================================================
+    
     Instruction exInst = id_ex.instruction;
     int op1 = id_ex.operand1;
     int op2 = id_ex.operand2;
@@ -121,7 +121,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             next_id_ex = {Instruction(), -1, 0, 0};
         }
     }
-    // --- NEW BLT LOGIC ---
+    
     else if (exInst.opcode == OPCODE::BLT) {
         if (op1 < op2) {
             pc = exInst.immediate;
@@ -129,7 +129,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             next_id_ex = {Instruction(), -1, 0, 0};
         }
     }
-    // --- NEW BGE LOGIC ---
+    
     else if (exInst.opcode == OPCODE::BGE) {
         if (op1 >= op2) {
             pc = exInst.immediate;
@@ -144,9 +144,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex = {Instruction(), -1, 0, 0};
     }
 
-    // =========================================================
+    
     // 6. MEM STAGE
-    // =========================================================
+    
     next_mem_wb.instruction = ex_mem.instruction;
     Instruction memInst = ex_mem.instruction;
 
@@ -161,9 +161,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_mem_wb.writeData = ex_mem.aluResult;
     }
 
-    // =========================================================
+    
     // 7. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
-    // =========================================================
+    
     if_id = next_if_id;
     id_ex = next_id_ex;
     ex_mem = next_ex_mem;

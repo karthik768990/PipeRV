@@ -79,8 +79,8 @@ OPCODE Parser::convertOpCode(const std::string& opCodeString){
     if(opString=="ADD")return OPCODE::ADD;
     else if(opString=="ADDI")return OPCODE::ADDI;
     else if(opString=="BNE")return OPCODE::BNE;
-    else if(opString=="BLT")return OPCODE::BLT; // Added
-    else if(opString=="BGE")return OPCODE::BGE; // Added
+    else if(opString=="BLT")return OPCODE::BLT; 
+    else if(opString=="BGE")return OPCODE::BGE; 
     else if(opString=="LW") return OPCODE::LW;
     else if(opString=="SUB")return OPCODE::SUB;
     else if(opString=="SW")return OPCODE::SW;

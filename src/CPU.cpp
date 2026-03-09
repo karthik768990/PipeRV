@@ -26,7 +26,7 @@
 
     void CPU::run(){
 
-    // Run until program finishes and pipeline drains
+    // Runing the cpu until program finishes and pipeline drains
     while (pc < instructions.size() || pipeline.hasPendingInstructions()) {
 
         pipeline.step(instructions,
