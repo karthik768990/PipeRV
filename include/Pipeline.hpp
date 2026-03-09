@@ -44,7 +44,7 @@ private:
     ID_EX id_ex;
     EX_MEM ex_mem;
     MEM_WB mem_wb;
-
+    int ex_cycles_remaining = 0;
 
     bool stall;
     bool flush;

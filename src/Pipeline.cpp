@@ -9,6 +9,7 @@ Pipeline::Pipeline() {
 void Pipeline::reset() {
     stall = false;
     flush = false;
+    ex_cycles_remaining = 0; // Reset multi-cycle tracker
 
     if_id = {Instruction(), -1};
     id_ex = {Instruction(), -1, 0, 0};
@@ -23,13 +24,12 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     Stats& stats,
                     ConfigReader& config) {
 
-    
+    // =========================================================
     // 0. WB STAGE (Simulate falling-edge write)
-    
+    // =========================================================
     Instruction wbInst = mem_wb.instruction;
     
     if (wbInst.opcode != OPCODE::NOP) {
-        // Prevent writing to x0, and prevent SW/BNE/BLT/BGE from writing garbage
         if (wbInst.rd > 0 && 
             wbInst.opcode != OPCODE::SW && 
             wbInst.opcode != OPCODE::BNE &&
@@ -40,23 +40,65 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         stats.incrementInstruction();
     }
 
-    
-    // 1. CREATE "NEXT STATE" BUFFERS (Double Buffering)
-    
+    // =========================================================
+    // 1. CREATE "NEXT STATE" BUFFERS
+    // =========================================================
     IF_ID next_if_id = if_id;
     ID_EX next_id_ex = id_ex;
     EX_MEM next_ex_mem = ex_mem;
     MEM_WB next_mem_wb = mem_wb;
 
+    // =========================================================
+    // 2. MULTI-CYCLE EXECUTION LOGIC (The Latency Fix!)
+    // =========================================================
+    bool ex_stall = false;
     
-    // 2. HAZARD DETECTION (Calculate FIRST!)
-    
-    bool current_stall = hazardUnit.shouldStall(if_id, id_ex);
+    if (id_ex.instruction.opcode != OPCODE::NOP) {
+        // First cycle viewing this instruction: load its latency
+        if (ex_cycles_remaining == 0) {
+            ex_cycles_remaining = config.getLatency(id_ex.instruction.opcode);
+        }
 
-    
-    // 3. IF STAGE
-    
-    if (!current_stall) {
+        // If it needs more than 1 cycle, stall the upper pipeline
+        if (ex_cycles_remaining > 1) {
+            ex_stall = true;
+            ex_cycles_remaining--; 
+        } else {
+            // Execution finishes this cycle
+            ex_cycles_remaining = 0; 
+        }
+    }
+
+    // =========================================================
+    // 3. HAZARD DETECTION (The Forwarding-OFF Fix!)
+    // =========================================================
+    bool data_stall = hazardUnit.shouldStall(if_id, id_ex);
+
+    // If Forwarding is OFF, we MUST stall until the dependency writes to the Register File
+    if (!config.isForwardingEnabled()) {
+        int rs1 = if_id.instruction.rs1;
+        int rs2 = if_id.instruction.rs2;
+        
+        // Helper to check if an instruction writes to a specific register
+        auto isWritingToReg = [](int rs, const Instruction& inst) {
+            return (rs > 0 && inst.rd == rs && 
+                    inst.opcode != OPCODE::SW && inst.opcode != OPCODE::BNE && 
+                    inst.opcode != OPCODE::BLT && inst.opcode != OPCODE::BGE && 
+                    inst.opcode != OPCODE::NOP);
+        };
+
+        // If EX or MEM is currently working on rs1 or rs2, trigger a stall!
+        if (isWritingToReg(rs1, id_ex.instruction) || isWritingToReg(rs2, id_ex.instruction) ||
+            isWritingToReg(rs1, ex_mem.instruction) || isWritingToReg(rs2, ex_mem.instruction)) {
+            data_stall = true;
+        }
+    }
+
+    // =========================================================
+    // 4. IF STAGE
+    // =========================================================
+    // Only fetch if EX isn't busy AND there are no data hazards
+    if (!ex_stall && !data_stall) {
         if (pc < instructions.size()) {
             next_if_id.instruction = instructions[pc];
             next_if_id.pc = pc;
@@ -67,14 +109,20 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    
-    // 4. ID STAGE
-    
-    if (current_stall) { 
+    // =========================================================
+    // 5. ID STAGE
+    // =========================================================
+    if (ex_stall) { 
+        // EX is still processing latency: freeze ID completely
+        next_id_ex = id_ex; 
+    }
+    else if (data_stall) { 
+        // Data hazard: Insert a bubble to wait for dependencies
         stats.incrementStall();
         next_id_ex = {Instruction(), -1, 0, 0}; 
     }
     else {
+        // Normal decode
         next_id_ex.instruction = if_id.instruction;
         next_id_ex.pc = if_id.pc;
 
@@ -83,70 +131,76 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
 
-    
-    // 5. EX STAGE
-    
-    Instruction exInst = id_ex.instruction;
-    int op1 = id_ex.operand1;
-    int op2 = id_ex.operand2;
+    // =========================================================
+    // 6. EX STAGE
+    // =========================================================
+    if (ex_stall) {
+        // Instruction is not done yet. Output a bubble to MEM.
+        next_ex_mem = {Instruction(), 0, 0};
+        stats.incrementStall();
+    } 
+    else {
+        // Instruction is finishing execution!
+        Instruction exInst = id_ex.instruction;
+        int op1 = id_ex.operand1;
+        int op2 = id_ex.operand2;
 
-    if (config.isForwardingEnabled()) {
-        forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
-    }
+        if (config.isForwardingEnabled()) {
+            forwardingUnit.resolveForwarding(id_ex, ex_mem, mem_wb, op1, op2);
+        }
 
-    next_ex_mem.instruction = exInst;
-    next_ex_mem.operand2 = 0;
-    next_ex_mem.aluResult = 0;
+        next_ex_mem.instruction = exInst;
+        next_ex_mem.operand2 = 0;
+        next_ex_mem.aluResult = 0;
 
-    if (exInst.opcode == OPCODE::ADD) {
-        next_ex_mem.aluResult = op1 + op2;
-    }
-    else if (exInst.opcode == OPCODE::SUB) {
-        next_ex_mem.aluResult = op1 - op2;
-    }
-    else if (exInst.opcode == OPCODE::ADDI) {
-        next_ex_mem.aluResult = op1 + exInst.immediate;
-    }
-    else if (exInst.opcode == OPCODE::LW) {
-        next_ex_mem.aluResult = op1 + exInst.immediate;
-    }
-    else if (exInst.opcode == OPCODE::SW) {
-        next_ex_mem.aluResult = op1 + exInst.immediate;
-        next_ex_mem.operand2 = op2;                    
-    }
-    else if (exInst.opcode == OPCODE::BNE) {
-        if (op1 != op2) {
+        if (exInst.opcode == OPCODE::ADD) {
+            next_ex_mem.aluResult = op1 + op2;
+        }
+        else if (exInst.opcode == OPCODE::SUB) {
+            next_ex_mem.aluResult = op1 - op2;
+        }
+        else if (exInst.opcode == OPCODE::ADDI) {
+            next_ex_mem.aluResult = op1 + exInst.immediate;
+        }
+        else if (exInst.opcode == OPCODE::LW) {
+            next_ex_mem.aluResult = op1 + exInst.immediate;
+        }
+        else if (exInst.opcode == OPCODE::SW) {
+            next_ex_mem.aluResult = op1 + exInst.immediate;
+            next_ex_mem.operand2 = op2;                    
+        }
+        else if (exInst.opcode == OPCODE::BNE) {
+            if (op1 != op2) {
+                pc = exInst.immediate;
+                next_if_id = {Instruction(), -1};
+                next_id_ex = {Instruction(), -1, 0, 0};
+            }
+        }
+        else if (exInst.opcode == OPCODE::BLT) {
+            if (op1 < op2) {
+                pc = exInst.immediate;
+                next_if_id = {Instruction(), -1};
+                next_id_ex = {Instruction(), -1, 0, 0};
+            }
+        }
+        else if (exInst.opcode == OPCODE::BGE) {
+            if (op1 >= op2) {
+                pc = exInst.immediate;
+                next_if_id = {Instruction(), -1};
+                next_id_ex = {Instruction(), -1, 0, 0};
+            }
+        }
+        else if (exInst.opcode == OPCODE::JAL) {
+            next_ex_mem.aluResult = id_ex.pc + 1;
             pc = exInst.immediate;
             next_if_id = {Instruction(), -1};
             next_id_ex = {Instruction(), -1, 0, 0};
         }
     }
-    
-    else if (exInst.opcode == OPCODE::BLT) {
-        if (op1 < op2) {
-            pc = exInst.immediate;
-            next_if_id = {Instruction(), -1};
-            next_id_ex = {Instruction(), -1, 0, 0};
-        }
-    }
-    
-    else if (exInst.opcode == OPCODE::BGE) {
-        if (op1 >= op2) {
-            pc = exInst.immediate;
-            next_if_id = {Instruction(), -1};
-            next_id_ex = {Instruction(), -1, 0, 0};
-        }
-    }
-    else if (exInst.opcode == OPCODE::JAL) {
-        next_ex_mem.aluResult = id_ex.pc + 1;
-        pc = exInst.immediate;
-        next_if_id = {Instruction(), -1};
-        next_id_ex = {Instruction(), -1, 0, 0};
-    }
 
-    
-    // 6. MEM STAGE
-    
+    // =========================================================
+    // 7. MEM STAGE
+    // =========================================================
     next_mem_wb.instruction = ex_mem.instruction;
     Instruction memInst = ex_mem.instruction;
 
@@ -161,9 +215,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_mem_wb.writeData = ex_mem.aluResult;
     }
 
-    
-    // 7. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
-    
+    // =========================================================
+    // 8. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
+    // =========================================================
     if_id = next_if_id;
     id_ex = next_id_ex;
     ex_mem = next_ex_mem;
