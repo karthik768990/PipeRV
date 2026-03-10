@@ -24,9 +24,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     Stats& stats,
                     ConfigReader& config) {
 
-    // =========================================================
+    
     // 0. WB STAGE (Simulate falling-edge write)
-    // =========================================================
+    
     Instruction wbInst = mem_wb.instruction;
     
     if (wbInst.opcode != OPCODE::NOP) {
@@ -40,17 +40,17 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         stats.incrementInstruction();
     }
 
-    // =========================================================
+    
     // 1. CREATE "NEXT STATE" BUFFERS
-    // =========================================================
+    
     IF_ID next_if_id = if_id;
     ID_EX next_id_ex = id_ex;
     EX_MEM next_ex_mem = ex_mem;
     MEM_WB next_mem_wb = mem_wb;
 
-    // =========================================================
+    
     // 2. MULTI-CYCLE EXECUTION LOGIC (The Latency Fix!)
-    // =========================================================
+    
     bool ex_stall = false;
     
     if (id_ex.instruction.opcode != OPCODE::NOP) {
@@ -69,9 +69,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // =========================================================
+    
     // 3. HAZARD DETECTION (The Forwarding-OFF Fix!)
-    // =========================================================
+    
     bool data_stall = hazardUnit.shouldStall(if_id, id_ex);
 
     // If Forwarding is OFF, we MUST stall until the dependency writes to the Register File
@@ -94,9 +94,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // =========================================================
+    
     // 4. IF STAGE
-    // =========================================================
+    
     // Only fetch if EX isn't busy AND there are no data hazards
     if (!ex_stall && !data_stall) {
         if (pc < instructions.size()) {
@@ -109,9 +109,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // =========================================================
+    
     // 5. ID STAGE
-    // =========================================================
+    
     if (ex_stall) { 
         // EX is still processing latency: freeze ID completely
         next_id_ex = id_ex; 
@@ -131,9 +131,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
 
-    // =========================================================
+    
     // 6. EX STAGE
-    // =========================================================
+    
     if (ex_stall) {
         // Instruction is not done yet. Output a bubble to MEM.
         next_ex_mem = {Instruction(), 0, 0};
@@ -198,9 +198,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // =========================================================
+    
     // 7. MEM STAGE
-    // =========================================================
+    
     next_mem_wb.instruction = ex_mem.instruction;
     Instruction memInst = ex_mem.instruction;
 
@@ -215,9 +215,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_mem_wb.writeData = ex_mem.aluResult;
     }
 
-    // =========================================================
+    
     // 8. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
-    // =========================================================
+    
     if_id = next_if_id;
     id_ex = next_id_ex;
     ex_mem = next_ex_mem;
