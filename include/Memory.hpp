@@ -3,7 +3,6 @@
 
 class Memory{
     static constexpr int mem_size = 1024;
-
     private:
         int mem[mem_size];
     public:    
