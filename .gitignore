@@ -2,3 +2,5 @@
 .vscode/
 build/
 simulator.exe 
+*.exe
+test.exe
