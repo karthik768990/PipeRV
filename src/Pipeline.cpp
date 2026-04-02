@@ -95,12 +95,55 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    bool mem_stall = false;
+ // 7. MEM STAGE (MOVED HERE to propagate stalls to IF/ID/EX in the same cycle)
+    next_mem_wb.instruction = ex_mem.instruction;
+    Instruction memInst = ex_mem.instruction;
 
-// Check ongoing memory stall
-if (mem_stall_cycles > 0) {
-    mem_stall = true;
-}
+    if (mem_stall_cycles > 0) {
+        mem_stall_cycles--;
+        stats.incrementStall();
+        
+        if (mem_stall_cycles > 0) {
+            next_mem_wb.instruction = Instruction(); // FIX: Inject Bubble to prevent duplicate commits
+        }
+    }
+    else {
+        if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
+            && !mem_access_in_progress) {
+
+            bool hit = L1D.access(ex_mem.aluResult);
+            mem_access_in_progress = true;
+
+            if (!hit) {
+                mem_stall_cycles = 3;
+                stats.incrementStall();
+                next_mem_wb.instruction = Instruction(); // FIX: Inject Bubble on initial miss
+            }
+        }
+    }
+
+    // Execute memory op immediately on hit, or exactly when stall finishes
+    if (mem_stall_cycles == 0) {
+        if (memInst.opcode == OPCODE::LW) {
+            next_mem_wb.writeData = memory.load(ex_mem.aluResult);
+        }
+        else if (memInst.opcode == OPCODE::SW) {
+            memory.store(ex_mem.aluResult, ex_mem.operand2);
+            next_mem_wb.writeData = 0;
+        }
+        else {
+            next_mem_wb.writeData = ex_mem.aluResult;
+        }
+        mem_access_in_progress = false; // Reset lock
+    }
+
+    // --- STALL PROPAGATION ---
+    bool mem_stall = false;
+    if (mem_stall_cycles > 0) {
+        mem_stall = true;
+    }
+
+    // 4. IF STAGE (Leave the rest of IF, ID, EX as they are below here...)
     // 4. IF STAGE
     
     // Only fetch if EX isn't busy AND there are no data hazards
@@ -173,7 +216,7 @@ if (mem_stall_cycles > 0) {
         }
         else if (exInst.opcode == OPCODE::SW) {
             next_ex_mem.aluResult = op1 + exInst.immediate;
-            next_ex_mem.operand2 = id_ex.operand2;                    
+            next_ex_mem.operand2 = op2;                    
         }
         else if (exInst.opcode == OPCODE::BNE) {
             if (op1 != op2) {
@@ -205,45 +248,7 @@ if (mem_stall_cycles > 0) {
     }
 
     
-    // 7. MEM STAGE
-next_mem_wb.instruction = ex_mem.instruction;
-Instruction memInst = ex_mem.instruction;
-
-if (mem_stall_cycles > 0) {
-    mem_stall_cycles--;
-    stats.incrementStall();
-     if (mem_stall_cycles == 0) {
-        mem_access_in_progress = false;
-    }
-}
-else {
-    if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
-        && !mem_access_in_progress) {
-
-        bool hit = L1D.access(ex_mem.aluResult);
-        mem_access_in_progress = true;
-
-        if (!hit) {
-            mem_stall_cycles = 3;
-            stats.incrementStall();
-        }
-    }
-
-    if (mem_stall_cycles == 0) {
-        if (memInst.opcode == OPCODE::LW) {
-            next_mem_wb.writeData = memory.load(ex_mem.aluResult);
-        }
-        else if (memInst.opcode == OPCODE::SW) {
-            memory.store(ex_mem.aluResult, ex_mem.operand2);
-            next_mem_wb.writeData = 0;
-        }
-        else {
-            next_mem_wb.writeData = ex_mem.aluResult;
-        }
-
-        mem_access_in_progress = false; // reset
-    }
-}    
+     
     // 8. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
     
     if_id = next_if_id;
