@@ -143,23 +143,25 @@ void Pipeline::step(std::vector<Instruction>& instructions,
 
     bool mem_stall = (mem_stall_cycles > 0);
 
-    // 4. IF STAGE (NEW L1I INTEGRATION)
+    // 4. IF STAGE (L1I INTEGRATION FIX)
     bool if_stall = false;
 
     if (if_stall_cycles > 0) {
         if_stall_cycles--;
-        stats.incrementStall();
+        stats.incrementStall(); // Source of stall
         if_stall = true;
+        next_if_id = {Instruction(), -1}; // Output a bubble because fetch isn't ready
     } 
     else if (!ex_stall && !data_stall && !mem_stall) {
+        // Downstream is clear, we can fetch
         if (pc < instructions.size()) {
-            // Treat PC as a memory address (multiply by 4 if byte-addressable)
             int fetch_latency = L1I.access(pc * 4); 
             
             if (fetch_latency > 1) {
                 if_stall_cycles = fetch_latency - 1;
-                stats.incrementStall();
+                stats.incrementStall(); // Source of stall
                 if_stall = true;
+                next_if_id = {Instruction(), -1}; // Output a bubble
             } else {
                 next_if_id.instruction = instructions[pc];
                 next_if_id.pc = pc;
@@ -169,22 +171,22 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             next_if_id.instruction = Instruction(); // End of program
         }
     }
+    // Note: If downstream IS stalled (ex_stall, data_stall, or mem_stall), 
+    // we do nothing here. next_if_id remains equal to if_id, freezing the instruction perfectly.
 
     // Inject bubble if IF is stalled
     if (if_stall || ex_stall || data_stall || mem_stall) {
         next_if_id = {Instruction(), -1};
     }
 
-
-    // 5. ID STAGE 
-    
+// 5. ID STAGE 
     if (ex_stall || mem_stall) { 
         // Upper pipeline is stalled: freeze ID completely
         next_id_ex = id_ex; 
     }
-    else if (data_stall || if_stall) {  
-        // Data hazard or Instruction Fetch miss: Insert a bubble
-        if (data_stall) stats.incrementStall(); // Don't double-count stats if it's an if_stall
+    else if (data_stall) {  // FIX: Removed if_stall! 
+        // Data hazard: Insert a bubble
+        stats.incrementStall(); // Source of stall
         next_id_ex = {Instruction(), -1, 0, 0}; 
     }
     else {
@@ -196,12 +198,11 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand1 = (idInst.rs1 >= 0) ? registerFile.read(idInst.rs1) : 0;
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
-    // 6. EX STAGE
     
+    // 6. EX STAGE
     if (ex_stall || mem_stall) {
         // Instruction is not done yet. Output a bubble to MEM.
         next_ex_mem = ex_mem;
-        stats.incrementStall();
     } 
     else {
         // Instruction is finishing execution!
