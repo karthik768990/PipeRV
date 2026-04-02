@@ -185,10 +185,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     // Note: If downstream IS stalled (ex_stall, data_stall, or mem_stall), 
     // we do nothing here. next_if_id remains equal to if_id, freezing the instruction perfectly.
 
-    // Inject bubble if IF is stalled
-    if (if_stall || ex_stall || data_stall || mem_stall) {
-        next_if_id = {Instruction(), -1};
-    }
+    
 
 // 5. ID STAGE 
     if (ex_stall || mem_stall) { 
