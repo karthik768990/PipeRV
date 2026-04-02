@@ -143,32 +143,43 @@ void Pipeline::step(std::vector<Instruction>& instructions,
 
     bool mem_stall = (mem_stall_cycles > 0);
 
-    // 4. IF STAGE (L1I INTEGRATION FIX)
+    // 4. IF STAGE (THE FREEZE FIX)
     bool if_stall = false;
 
-    if (if_stall_cycles > 0) {
-        if_stall_cycles--;
-        stats.incrementStall(); // Source of stall
-        if_stall = true;
-        next_if_id = {Instruction(), -1}; // Output a bubble because fetch isn't ready
+    // RULE 1: If downstream is blocked, FREEZE the current instruction.
+    if (ex_stall || data_stall || mem_stall) {
+        next_if_id = if_id; 
+        
+        // Let the cache keep fetching in the background
+        if (if_stall_cycles > 0) {
+            if_stall_cycles--;
+        }
     } 
-    else if (!ex_stall && !data_stall && !mem_stall) {
-        // Downstream is clear, we can fetch
-        if (pc < instructions.size()) {
-            int fetch_latency = L1I.access(pc * 4); 
-            
-            if (fetch_latency > 1) {
-                if_stall_cycles = fetch_latency - 1;
-                stats.incrementStall(); // Source of stall
-                if_stall = true;
-                next_if_id = {Instruction(), -1}; // Output a bubble
+    // RULE 2: If pipeline is moving, handle L1I fetching.
+    else {
+        if (if_stall_cycles > 0) {
+            if_stall_cycles--;
+            stats.incrementStall();
+            if_stall = true;
+            next_if_id = {Instruction(), -1}; // Output bubble
+        } 
+        else {
+            if (pc < instructions.size()) {
+                int fetch_latency = L1I.access(pc * 4); 
+                
+                if (fetch_latency > 1) {
+                    if_stall_cycles = fetch_latency - 1;
+                    stats.incrementStall();
+                    if_stall = true;
+                    next_if_id = {Instruction(), -1}; // Output bubble
+                } else {
+                    next_if_id.instruction = instructions[pc];
+                    next_if_id.pc = pc;
+                    pc++;
+                }
             } else {
-                next_if_id.instruction = instructions[pc];
-                next_if_id.pc = pc;
-                pc++;
+                next_if_id.instruction = Instruction(); // End of program
             }
-        } else {
-            next_if_id.instruction = Instruction(); // End of program
         }
     }
     // Note: If downstream IS stalled (ex_stall, data_stall, or mem_stall), 
@@ -239,6 +250,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                 pc = exInst.immediate;
                 next_if_id = {Instruction(), -1};
                 next_id_ex = {Instruction(), -1, 0, 0};
+                if_stall_cycles = 0;
             }
         }
         else if (exInst.opcode == OPCODE::BLT) {
@@ -246,6 +258,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                 pc = exInst.immediate;
                 next_if_id = {Instruction(), -1};
                 next_id_ex = {Instruction(), -1, 0, 0};
+                if_stall_cycles = 0;
             }
         }
         else if (exInst.opcode == OPCODE::BGE) {
@@ -253,6 +266,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                 pc = exInst.immediate;
                 next_if_id = {Instruction(), -1};
                 next_id_ex = {Instruction(), -1, 0, 0};
+                if_stall_cycles = 0;
             }
         }
         else if (exInst.opcode == OPCODE::JAL) {
@@ -260,6 +274,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
             pc = exInst.immediate;
             next_if_id = {Instruction(), -1};
             next_id_ex = {Instruction(), -1, 0, 0};
+                if_stall_cycles = 0;
         }
     }
 
