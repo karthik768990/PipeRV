@@ -11,7 +11,7 @@ void Pipeline::reset() {
     flush = false;
     mem_stall_cycles = 0;
     ex_cycles_remaining = 0; // Reset multi-cycle tracker
-
+    mem_access_in_progress = false;
     if_id = {Instruction(), -1};
     id_ex = {Instruction(), -1, 0, 0};
     ex_mem = {Instruction(), 0, 0};
@@ -95,11 +95,16 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    
+    bool mem_stall = false;
+
+// Check ongoing memory stall
+if (mem_stall_cycles > 0) {
+    mem_stall = true;
+}
     // 4. IF STAGE
     
     // Only fetch if EX isn't busy AND there are no data hazards
-    if (!ex_stall && !data_stall) {
+    if (!ex_stall && !data_stall && !mem_stall) {
         if (pc < instructions.size()) {
             next_if_id.instruction = instructions[pc];
             next_if_id.pc = pc;
@@ -113,7 +118,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     
     // 5. ID STAGE
     
-    if (ex_stall) { 
+    if (ex_stall||mem_stall) { 
         // EX is still processing latency: freeze ID completely
         next_id_ex = id_ex; 
     }
@@ -135,7 +140,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     
     // 6. EX STAGE
     
-    if (ex_stall) {
+    if (ex_stall || mem_stall) {
         // Instruction is not done yet. Output a bubble to MEM.
         next_ex_mem = {Instruction(), 0, 0};
         stats.incrementStall();
@@ -201,55 +206,41 @@ void Pipeline::step(std::vector<Instruction>& instructions,
 
     
     // 7. MEM STAGE
-    
-    next_mem_wb.instruction = ex_mem.instruction;
-    Instruction memInst = ex_mem.instruction;
+next_mem_wb.instruction = ex_mem.instruction;
+Instruction memInst = ex_mem.instruction;
 
-    // =========================
-// CACHE + MEMORY STALL LOGIC
-// =========================
-
-// If currently stalling → freeze pipeline
 if (mem_stall_cycles > 0) {
     mem_stall_cycles--;
     stats.incrementStall();
-
-    // Freeze entire pipeline
-    next_mem_wb = mem_wb;
-    next_ex_mem = ex_mem;
-    next_id_ex = id_ex;
-    next_if_id = if_id;
-
-    return;
-}
-
-// New memory access
-if (memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) {
-
-    bool hit = L1D.access(ex_mem.aluResult);
-
-    if (!hit) {
-        // MISS → simulate delay (you can tune this later)
-        mem_stall_cycles = 3;
-
-        stats.incrementStall();
-        return;
-    }
-}
-
-// Perform actual memory operation AFTER stall completes
-if (memInst.opcode == OPCODE::LW) {
-    next_mem_wb.writeData = memory.load(ex_mem.aluResult);
-}
-else if (memInst.opcode == OPCODE::SW) {
-    memory.store(ex_mem.aluResult, ex_mem.operand2);
-    next_mem_wb.writeData = 0;
 }
 else {
-    next_mem_wb.writeData = ex_mem.aluResult;
-}
+    if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
+        && !mem_access_in_progress) {
 
-    
+        bool hit = L1D.access(ex_mem.aluResult);
+        mem_access_in_progress = true;
+
+        if (!hit) {
+            mem_stall_cycles = 3;
+            stats.incrementStall();
+        }
+    }
+
+    if (mem_stall_cycles == 0) {
+        if (memInst.opcode == OPCODE::LW) {
+            next_mem_wb.writeData = memory.load(ex_mem.aluResult);
+        }
+        else if (memInst.opcode == OPCODE::SW) {
+            memory.store(ex_mem.aluResult, ex_mem.operand2);
+            next_mem_wb.writeData = 0;
+        }
+        else {
+            next_mem_wb.writeData = ex_mem.aluResult;
+        }
+
+        mem_access_in_progress = false; // reset
+    }
+}    
     // 8. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
     
     if_id = next_if_id;

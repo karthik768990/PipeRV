@@ -40,6 +40,7 @@ private:
     Cache* L1D;
 int mem_stall_cycles;
     ForwardingUnit forwardingUnit;
+    bool mem_access_in_progress;
     HazardUnit hazardUnit;
     IF_ID if_id;
     ID_EX id_ex;
