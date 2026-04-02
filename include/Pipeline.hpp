@@ -39,6 +39,7 @@ private:
 
     Cache* L1D;
 int mem_stall_cycles;
+int if_stall_cycles;
     ForwardingUnit forwardingUnit;
     bool mem_access_in_progress;
     HazardUnit hazardUnit;
@@ -59,7 +60,7 @@ public:
     void step(std::vector<Instruction>& instructions,
               int& pc,
               RegisterFile& registerFile,
-              Memory& memory, Cache& L1D,
+              Memory& memory, Cache& L1I,Cache& L1D,
               Stats& stats,
               ConfigReader& config);
     

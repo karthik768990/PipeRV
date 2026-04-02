@@ -10,7 +10,9 @@
 
 class CPU{
 private:
-    Cache L1D = Cache(64, 4, 2, 1, ReplacementPolicy::LRU);
+    Cache* L1I = nullptr;
+    Cache* L1D = nullptr;
+    Cache* L2 = nullptr;
 
     std::vector<Instruction> instructions;
 
@@ -25,7 +27,7 @@ private:
 
 public:
     CPU();
-
+    ~CPU();
     void loadProgram(const std::vector<Instruction>& instructions);
 
     void run();

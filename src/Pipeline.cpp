@@ -10,6 +10,7 @@ void Pipeline::reset() {
     stall = false;
     flush = false;
     mem_stall_cycles = 0;
+    if_stall_cycles = 0;
     ex_cycles_remaining = 0; // Reset multi-cycle tracker
     mem_access_in_progress = false;
     if_id = {Instruction(), -1};
@@ -21,7 +22,7 @@ void Pipeline::reset() {
 void Pipeline::step(std::vector<Instruction>& instructions,
                     int& pc,
                     RegisterFile& registerFile,
-                    Memory& memory , Cache& L1D,
+                    Memory& memory ,Cache& L1I, Cache& L1D,
                     Stats& stats,
                     ConfigReader& config) {
 
@@ -111,14 +112,17 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
             && !mem_access_in_progress) {
 
-            bool hit = L1D.access(ex_mem.aluResult);
-            mem_access_in_progress = true;
+            // Get the exact variable latency from the L1D -> L2 -> Mem hierarchy
+        int total_latency = L1D.access(ex_mem.aluResult);
+        mem_access_in_progress = true;
 
-            if (!hit) {
-                mem_stall_cycles = 3;
-                stats.incrementStall();
-                next_mem_wb.instruction = Instruction(); // FIX: Inject Bubble on initial miss
-            }
+        // Base latency of 1 cycle is "free" in the pipeline.
+        // Any latency > 1 means we missed somewhere and must stall.
+        if (total_latency > 1) {
+            mem_stall_cycles = total_latency - 1; 
+            stats.incrementStall();
+            next_mem_wb.instruction = Instruction(); // Inject bubble
+        }
         }
     }
 
@@ -137,37 +141,50 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         mem_access_in_progress = false; // Reset lock
     }
 
-    // --- STALL PROPAGATION ---
-    bool mem_stall = false;
-    if (mem_stall_cycles > 0) {
-        mem_stall = true;
-    }
+    bool mem_stall = (mem_stall_cycles > 0);
 
-    // 4. IF STAGE (Leave the rest of IF, ID, EX as they are below here...)
-    // 4. IF STAGE
-    
-    // Only fetch if EX isn't busy AND there are no data hazards
-    if (!ex_stall && !data_stall && !mem_stall) {
+    // 4. IF STAGE (NEW L1I INTEGRATION)
+    bool if_stall = false;
+
+    if (if_stall_cycles > 0) {
+        if_stall_cycles--;
+        stats.incrementStall();
+        if_stall = true;
+    } 
+    else if (!ex_stall && !data_stall && !mem_stall) {
         if (pc < instructions.size()) {
-            next_if_id.instruction = instructions[pc];
-            next_if_id.pc = pc;
-            pc++;
-        }
-        else {
-            next_if_id.instruction = Instruction();
+            // Treat PC as a memory address (multiply by 4 if byte-addressable)
+            int fetch_latency = L1I.access(pc * 4); 
+            
+            if (fetch_latency > 1) {
+                if_stall_cycles = fetch_latency - 1;
+                stats.incrementStall();
+                if_stall = true;
+            } else {
+                next_if_id.instruction = instructions[pc];
+                next_if_id.pc = pc;
+                pc++;
+            }
+        } else {
+            next_if_id.instruction = Instruction(); // End of program
         }
     }
 
+    // Inject bubble if IF is stalled
+    if (if_stall || ex_stall || data_stall || mem_stall) {
+        next_if_id = {Instruction(), -1};
+    }
+
+
+    // 5. ID STAGE 
     
-    // 5. ID STAGE
-    
-    if (ex_stall||mem_stall) { 
-        // EX is still processing latency: freeze ID completely
+    if (ex_stall || mem_stall) { 
+        // Upper pipeline is stalled: freeze ID completely
         next_id_ex = id_ex; 
     }
-    else if (data_stall) { 
-        // Data hazard: Insert a bubble to wait for dependencies
-        stats.incrementStall();
+    else if (data_stall || if_stall) {  
+        // Data hazard or Instruction Fetch miss: Insert a bubble
+        if (data_stall) stats.incrementStall(); // Don't double-count stats if it's an if_stall
         next_id_ex = {Instruction(), -1, 0, 0}; 
     }
     else {
@@ -179,8 +196,6 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         next_id_ex.operand1 = (idInst.rs1 >= 0) ? registerFile.read(idInst.rs1) : 0;
         next_id_ex.operand2 = (idInst.rs2 >= 0) ? registerFile.read(idInst.rs2) : 0;
     }
-
-    
     // 6. EX STAGE
     
     if (ex_stall || mem_stall) {

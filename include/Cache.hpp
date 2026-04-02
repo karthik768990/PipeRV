@@ -35,7 +35,12 @@ class Cache{
         ReplacementPolicy policy;
 
     public:
-        Cache(int size,int blockSize, int associativity,int latency,ReplacementPolicy policy){
+        Cache* nextLevel = nullptr;
+        int memLatency = 50;
+        int hits = 0;
+        int misses = 0;
+
+    Cache(int size,int blockSize, int associativity,int latency,ReplacementPolicy policy){
             this->associativity  = associativity;
             this->size = size;
             this->blockSize = blockSize;
@@ -60,7 +65,7 @@ class Cache{
                 
             }
 
-        bool access(int address);
+        int access(int address);
         int getLatency(bool hit);
     private:
         int getIndex(int address) const;

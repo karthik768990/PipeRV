@@ -11,24 +11,33 @@ int Cache::getTag(int address) const{
     return blockAddr/numSets;
 }
 
-bool Cache::access(int address){
+int Cache::access(int address){
     globalTime++;
     int index = getIndex(address);
     int tag = getTag(address);
 
-    // for each line in sets[index]
-    //  if line.valid && line.tag==tag:
-
-    for( CacheLine& line : sets[index]){
-        if(line.valid && line.tag==tag){
-            //this indicates a hit 
+    // 1. Check Hit
+    for(CacheLine& line : sets[index]){
+        if(line.valid && line.tag == tag){
             line.lastUsedTime = globalTime;
-            return true;
+            hits++;
+            return this->latency; // Return base latency on hit
         }
-
     } 
-    replaceLine(index,tag);
-    return false;
+
+    // 2. Handle Miss
+    misses++;
+    replaceLine(index, tag);
+
+    // 3. Ask downstream and accumulate latency
+    int downstreamLatency = 0;
+    if (nextLevel != nullptr) {
+        downstreamLatency = nextLevel->access(address);
+    } else {
+        downstreamLatency = memLatency;
+    }
+
+    return this->latency + downstreamLatency;
 }
 //replacement logic first in first out for now 
 void Cache::replaceLine(int setIndex,int tag){

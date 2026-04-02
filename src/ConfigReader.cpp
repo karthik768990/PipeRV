@@ -45,6 +45,18 @@
                 forwardingEnabled = (val != 0);
                 continue;
             }
+            // --- ADD THESE PARSERS ---
+        if (key == "L1_SIZE") { l1_size = val; continue; }
+        if (key == "L1_BLOCK_SIZE") { l1_blockSize = val; continue; }
+        if (key == "L1_ASSOC") { l1_assoc = val; continue; }
+        if (key == "L1_LATENCY") { l1_latency = val; continue; }
+        
+        if (key == "L2_SIZE") { l2_size = val; continue; }
+        if (key == "L2_BLOCK_SIZE") { l2_blockSize = val; continue; }
+        if (key == "L2_ASSOC") { l2_assoc = val; continue; }
+        if (key == "L2_LATENCY") { l2_latency = val; continue; }
+        
+        if (key == "MEM_LATENCY") { mem_latency = val; continue; }
 
             OPCODE opcode;
 
@@ -59,6 +71,18 @@
             else if(key=="BGE")opcode = OPCODE::BGE;
             else continue;
 
+            // Memory & Cache Config Parsing
+            if (key == "L1_SIZE") l1_size = val;
+            else if (key == "L1_BLOCK_SIZE") l1_blockSize = val;
+            else if (key == "L1_ASSOC") l1_assoc = val;
+            else if (key == "L1_LATENCY") l1_latency = val;
+            
+            else if (key == "L2_SIZE") l2_size = val;
+            else if (key == "L2_BLOCK_SIZE") l2_blockSize = val;
+            else if (key == "L2_ASSOC") l2_assoc = val;
+            else if (key == "L2_LATENCY") l2_latency = val;
+            
+            else if (key == "MEM_LATENCY") mem_latency = val;
             latency[static_cast<int>(opcode)] = val;
         }
 
