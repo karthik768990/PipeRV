@@ -212,6 +212,9 @@ Instruction memInst = ex_mem.instruction;
 if (mem_stall_cycles > 0) {
     mem_stall_cycles--;
     stats.incrementStall();
+     if (mem_stall_cycles == 0) {
+        mem_access_in_progress = false;
+    }
 }
 else {
     if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
