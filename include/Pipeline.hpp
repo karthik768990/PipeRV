@@ -7,7 +7,7 @@
 #include "ConfigReader.hpp"
 #include "ForwardingUnit.hpp"
 #include "HazardUnit.hpp"
-
+#include  "Cache.hpp"
 
 
 struct IF_ID {
@@ -37,7 +37,8 @@ struct IF_ID {
 class Pipeline {
 private:
 
-
+    Cache* L1D;
+int mem_stall_cycles;
     ForwardingUnit forwardingUnit;
     HazardUnit hazardUnit;
     IF_ID if_id;
@@ -57,7 +58,7 @@ public:
     void step(std::vector<Instruction>& instructions,
               int& pc,
               RegisterFile& registerFile,
-              Memory& memory,
+              Memory& memory, Cache& L1D,
               Stats& stats,
               ConfigReader& config);
     

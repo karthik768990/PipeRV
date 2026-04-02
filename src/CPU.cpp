@@ -32,7 +32,7 @@
         pipeline.step(instructions,
                       pc,
                       registerFile,
-                      memory,
+                      memory, CPU::L1D,
                       stats,
                       config);
     }

@@ -10,6 +10,8 @@
 
 class CPU{
 private:
+    Cache L1D = Cache(64, 4, 2, 1, ReplacementPolicy::LRU);
+
     std::vector<Instruction> instructions;
 
     int pc;   // instruction index (not byte address)

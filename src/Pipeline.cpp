@@ -9,6 +9,7 @@ Pipeline::Pipeline() {
 void Pipeline::reset() {
     stall = false;
     flush = false;
+    mem_stall_cycles = 0;
     ex_cycles_remaining = 0; // Reset multi-cycle tracker
 
     if_id = {Instruction(), -1};
@@ -20,7 +21,7 @@ void Pipeline::reset() {
 void Pipeline::step(std::vector<Instruction>& instructions,
                     int& pc,
                     RegisterFile& registerFile,
-                    Memory& memory,
+                    Memory& memory , Cache& L1D,
                     Stats& stats,
                     ConfigReader& config) {
 
@@ -204,16 +205,49 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     next_mem_wb.instruction = ex_mem.instruction;
     Instruction memInst = ex_mem.instruction;
 
-    if (memInst.opcode == OPCODE::LW) {
-        next_mem_wb.writeData = memory.load(ex_mem.aluResult);
+    // =========================
+// CACHE + MEMORY STALL LOGIC
+// =========================
+
+// If currently stalling → freeze pipeline
+if (mem_stall_cycles > 0) {
+    mem_stall_cycles--;
+    stats.incrementStall();
+
+    // Freeze entire pipeline
+    next_mem_wb = mem_wb;
+    next_ex_mem = ex_mem;
+    next_id_ex = id_ex;
+    next_if_id = if_id;
+
+    return;
+}
+
+// New memory access
+if (memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) {
+
+    bool hit = L1D.access(ex_mem.aluResult);
+
+    if (!hit) {
+        // MISS → simulate delay (you can tune this later)
+        mem_stall_cycles = 3;
+
+        stats.incrementStall();
+        return;
     }
-    else if (memInst.opcode == OPCODE::SW) {
-        memory.store(ex_mem.aluResult, ex_mem.operand2);
-        next_mem_wb.writeData = 0;
-    }
-    else {
-        next_mem_wb.writeData = ex_mem.aluResult;
-    }
+}
+
+// Perform actual memory operation AFTER stall completes
+if (memInst.opcode == OPCODE::LW) {
+    next_mem_wb.writeData = memory.load(ex_mem.aluResult);
+}
+else if (memInst.opcode == OPCODE::SW) {
+    memory.store(ex_mem.aluResult, ex_mem.operand2);
+    next_mem_wb.writeData = 0;
+}
+else {
+    next_mem_wb.writeData = ex_mem.aluResult;
+}
 
     
     // 8. CLOCK EDGE: COMMIT THE NEXT STATE TO CURRENT STATE
