@@ -142,7 +142,7 @@ if (mem_stall_cycles > 0) {
     
     if (ex_stall || mem_stall) {
         // Instruction is not done yet. Output a bubble to MEM.
-        next_ex_mem = {Instruction(), 0, 0};
+        next_ex_mem = ex_mem;
         stats.incrementStall();
     } 
     else {
@@ -173,7 +173,7 @@ if (mem_stall_cycles > 0) {
         }
         else if (exInst.opcode == OPCODE::SW) {
             next_ex_mem.aluResult = op1 + exInst.immediate;
-            next_ex_mem.operand2 = op2;                    
+            next_ex_mem.operand2 = id_ex.operand2;                    
         }
         else if (exInst.opcode == OPCODE::BNE) {
             if (op1 != op2) {
