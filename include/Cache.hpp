@@ -2,7 +2,6 @@
 #include <vector>
 
 
-// Cache organized as: sets × associativity
 
 
 
@@ -10,14 +9,13 @@ struct CacheLine{
     bool valid;
     int tag;
 
-    int lastUsedTime; //this is for the lru policy 
-    int insertionTime; //this is for the fifo policy
+    int lastUsedTime; //lru policy 
+    int insertionTime; //fifo policy
 };
 
 enum class ReplacementPolicy{
     FIFO,LRU
-}; // to avoid the string comparisions and have a cleaner implementation in cpp 
-
+}; // easy enum comparisions
 
 class Cache{
     private:

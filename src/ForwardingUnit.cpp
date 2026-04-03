@@ -10,7 +10,6 @@ void ForwardingUnit::resolveForwarding(const ID_EX& id_ex,
     int rs1 = id_ex.instruction.rs1;
     int rs2 = id_ex.instruction.rs2;
 
-    // ---------- Forward for operand1 ----------
     if (rs1 >= 0) {
 
         if (ex_mem.instruction.rd == rs1 &&
@@ -37,7 +36,6 @@ void ForwardingUnit::resolveForwarding(const ID_EX& id_ex,
         }
     }
 
-    // ---------- Forward for operand2 ----------
     if (rs2 >= 0) {
 
         if (ex_mem.instruction.rd == rs2 &&

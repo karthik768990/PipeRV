@@ -56,32 +56,26 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     bool ex_stall = false;
     
     if (id_ex.instruction.opcode != OPCODE::NOP) {
-        // First cycle viewing this instruction: load its latency
         if (ex_cycles_remaining == 0) {
             ex_cycles_remaining = config.getLatency(id_ex.instruction.opcode);
         }
 
-        // If it needs more than 1 cycle, stall the upper pipeline
         if (ex_cycles_remaining > 1) {
             ex_stall = true;
             ex_cycles_remaining--; 
         } else {
-            // Execution finishes this cycle
             ex_cycles_remaining = 0; 
         }
     }
 
     
-    // 3. HAZARD DETECTION (The Forwarding-OFF Fix!)
     
     bool data_stall = hazardUnit.shouldStall(if_id, id_ex);
 
-    // If Forwarding is OFF, we MUST stall until the dependency writes to the Register File
     if (!config.isForwardingEnabled()) {
         int rs1 = if_id.instruction.rs1;
         int rs2 = if_id.instruction.rs2;
         
-        // Helper to check if an instruction writes to a specific register
         auto isWritingToReg = [](int rs, const Instruction& inst) {
             return (rs > 0 && inst.rd == rs && 
                     inst.opcode != OPCODE::SW && inst.opcode != OPCODE::BNE && 
@@ -89,7 +83,6 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     inst.opcode != OPCODE::NOP);
         };
 
-        // If EX or MEM is currently working on rs1 or rs2, trigger a stall!
         if (isWritingToReg(rs1, id_ex.instruction) || isWritingToReg(rs2, id_ex.instruction) ||
             isWritingToReg(rs1, ex_mem.instruction) || isWritingToReg(rs2, ex_mem.instruction)) {
             data_stall = true;
@@ -105,19 +98,16 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         stats.incrementStall();
         
         if (mem_stall_cycles > 0) {
-            next_mem_wb.instruction = Instruction(); // FIX: Inject Bubble to prevent duplicate commits
+            next_mem_wb.instruction = Instruction(); 
         }
     }
     else {
         if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
             && !mem_access_in_progress) {
 
-            // Get the exact variable latency from the L1D -> L2 -> Mem hierarchy
         int total_latency = L1D.access(ex_mem.aluResult);
         mem_access_in_progress = true;
 
-        // Base latency of 1 cycle is "free" in the pipeline.
-        // Any latency > 1 means we missed somewhere and must stall.
         if (total_latency > 1) {
             mem_stall_cycles = total_latency - 1; 
             stats.incrementStall();
@@ -126,7 +116,6 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
 
-    // Execute memory op immediately on hit, or exactly when stall finishes
     if (mem_stall_cycles == 0) {
         if (memInst.opcode == OPCODE::LW) {
             next_mem_wb.writeData = memory.load(ex_mem.aluResult);
@@ -146,22 +135,19 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     // 4. IF STAGE (THE FREEZE FIX)
     bool if_stall = false;
 
-    // RULE 1: If downstream is blocked, FREEZE the current instruction.
     if (ex_stall || data_stall || mem_stall) {
         next_if_id = if_id; 
         
-        // Let the cache keep fetching in the background
         if (if_stall_cycles > 0) {
             if_stall_cycles--;
         }
     } 
-    // RULE 2: If pipeline is moving, handle L1I fetching.
     else {
         if (if_stall_cycles > 0) {
             if_stall_cycles--;
             stats.incrementStall();
             if_stall = true;
-            next_if_id = {Instruction(), -1}; // Output bubble
+            next_if_id = {Instruction(), -1}; 
         } 
         else {
             if (pc < instructions.size()) {
@@ -171,34 +157,29 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     if_stall_cycles = fetch_latency - 1;
                     stats.incrementStall();
                     if_stall = true;
-                    next_if_id = {Instruction(), -1}; // Output bubble
+                    next_if_id = {Instruction(), -1}; 
                 } else {
                     next_if_id.instruction = instructions[pc];
                     next_if_id.pc = pc;
                     pc++;
                 }
             } else {
-                next_if_id.instruction = Instruction(); // End of program
+                next_if_id.instruction = Instruction(); 
             }
         }
     }
-    // Note: If downstream IS stalled (ex_stall, data_stall, or mem_stall), 
-    // we do nothing here. next_if_id remains equal to if_id, freezing the instruction perfectly.
 
     
 
-// 5. ID STAGE 
+    // 5. ID STAGE 
     if (ex_stall || mem_stall) { 
-        // Upper pipeline is stalled: freeze ID completely
         next_id_ex = id_ex; 
     }
-    else if (data_stall) {  // FIX: Removed if_stall! 
-        // Data hazard: Insert a bubble
-        stats.incrementStall(); // Source of stall
+    else if (data_stall) {   
+        stats.incrementStall(); 
         next_id_ex = {Instruction(), -1, 0, 0}; 
     }
     else {
-        // Normal decode
         next_id_ex.instruction = if_id.instruction;
         next_id_ex.pc = if_id.pc;
 
@@ -209,11 +190,9 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     
     // 6. EX STAGE
     if (ex_stall || mem_stall) {
-        // Instruction is not done yet. Output a bubble to MEM.
         next_ex_mem = ex_mem;
     } 
     else {
-        // Instruction is finishing execution!
         Instruction exInst = id_ex.instruction;
         int op1 = id_ex.operand1;
         int op2 = id_ex.operand2;

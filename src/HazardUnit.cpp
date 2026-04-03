@@ -7,7 +7,6 @@ bool HazardUnit::shouldStall(const IF_ID& if_id,
     const Instruction& exInst = id_ex.instruction;
     const Instruction& idInst = if_id.instruction;
 
-    // Only care about load-use hazard nothing else 
     if (exInst.opcode == OPCODE::LW) {
 
         int loadDest = exInst.rd;

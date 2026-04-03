@@ -45,7 +45,6 @@
                 forwardingEnabled = (val != 0);
                 continue;
             }
-            // --- ADD THESE PARSERS ---
         if (key == "L1_SIZE") { l1_size = val; continue; }
         if (key == "L1_BLOCK_SIZE") { l1_blockSize = val; continue; }
         if (key == "L1_ASSOC") { l1_assoc = val; continue; }

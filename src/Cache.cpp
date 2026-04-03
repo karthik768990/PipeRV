@@ -16,7 +16,6 @@ int Cache::access(int address){
     int index = getIndex(address);
     int tag = getTag(address);
 
-    // 1. Check Hit
     for(CacheLine& line : sets[index]){
         if(line.valid && line.tag == tag){
             line.lastUsedTime = globalTime;
@@ -25,11 +24,9 @@ int Cache::access(int address){
         }
     } 
 
-    // 2. Handle Miss
     misses++;
     replaceLine(index, tag);
 
-    // 3. Ask downstream and accumulate latency
     int downstreamLatency = 0;
     if (nextLevel != nullptr) {
         downstreamLatency = nextLevel->access(address);

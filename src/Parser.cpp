@@ -163,7 +163,7 @@ std::vector<Instruction> Parser::parse(const std::string& fileName){
             lines.push_back(line);
     }
 
-    // PASS 1 : build label map
+    // PASS 1 : for  building label map
     int instructionIndex = 0;
 
     for(auto &l : lines){
@@ -181,7 +181,7 @@ std::vector<Instruction> Parser::parse(const std::string& fileName){
         instructionIndex++;
     }
 
-    // PASS 2 : build instructions
+    // PASS 2 :  for building  instructions
     std::vector<Instruction> instructions;
 
     for(auto &l : lines){

@@ -1,4 +1,3 @@
-// for the memory being not byte addressable for the phase -1 
 #pragma once 
 
 class Memory{
