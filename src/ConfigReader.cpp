@@ -37,8 +37,25 @@
             if (!std::getline(ss, key, '=')) continue;
             if (!std::getline(ss, value)) continue;
 
-            int val = std::stoi(value);
-            toUpper(key); // tot make the simulator case insensitive 
+            auto trim = [](std::string s) {
+                int start = s.find_first_not_of(" \t\r\n");
+                int end = s.find_last_not_of(" \t\r\n");
+                if (start == std::string::npos) return std::string("");
+                return s.substr(start, end - start + 1);
+            };
+
+            // Trim leading/trailing spaces from key and value
+            key = trim(key);
+            value = trim(value);
+
+            toUpper(key); // to make the simulator case insensitive 
+
+            int val = 0;
+            try {
+                val = std::stoi(value);
+            } catch (...) {
+                // Ignore parsing integer if it's a string like 'lru'
+            }
 
 
             if (key == "FORWARDING") {
@@ -82,7 +99,22 @@
             else if (key == "L2_LATENCY") l2_latency = val;
             
             else if (key == "MEM_LATENCY") mem_latency = val;
-            latency[static_cast<int>(opcode)] = val;
+            
+            // VM Config Parsing
+            else if (key == "VIRTUAL_SIZE_BYTES") virtual_size_bytes = val;
+            else if (key == "PHYSICAL_SIZE_BYTES") physical_size_bytes = val;
+            else if (key == "PAGE_SIZE_BYTES") page_size_bytes = val;
+            else if (key == "DTLB_ENTRIES") dtlb_entries = val;
+            else if (key == "TLB_HIT_LATENCY") tlb_hit_latency = val;
+            else if (key == "PAGE_WALK_LATENCY") page_walk_latency = val;
+            else if (key == "PAGE_FAULT_LATENCY") page_fault_latency = val;
+            else if (key == "REPLACEMENT_POLICY") {
+                // value is string, we converted key to upper but not value. Let's make value lower
+                std::string policy = value;
+                for(char& c : policy) c = tolower(c);
+                replacement_policy = policy;
+            }
+            else latency[static_cast<int>(opcode)] = val;
         }
 
         validateConfig();

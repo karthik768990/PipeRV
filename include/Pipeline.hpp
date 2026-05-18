@@ -33,13 +33,15 @@ struct IF_ID {
         int writeData;
     };
 
+class VirtualMemoryManager;
 
 class Pipeline {
 private:
 
     Cache* L1D;
 int mem_stall_cycles;
-int if_stall_cycles;
+    int if_stall_cycles;
+    int current_pa;
     ForwardingUnit forwardingUnit;
     bool mem_access_in_progress;
     HazardUnit hazardUnit;
@@ -62,8 +64,14 @@ public:
               RegisterFile& registerFile,
               Memory& memory, Cache& L1I,Cache& L1D,
               Stats& stats,
-              ConfigReader& config);
+              ConfigReader& config,
+              VirtualMemoryManager* vmm);
     
     bool hasPendingInstructions() const;          
     
+    const IF_ID& getIfId() const { return if_id; }
+    const ID_EX& getIdEx() const { return id_ex; }
+    const EX_MEM& getExMem() const { return ex_mem; }
+    const MEM_WB& getMemWb() const { return mem_wb; }
+    int getMemStallCycles() const { return mem_stall_cycles; }
 };

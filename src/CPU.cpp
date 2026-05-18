@@ -12,10 +12,12 @@
     delete L1I;
     delete L1D;
     delete L2;
+    delete vmm;
 
     L1I = nullptr;
     L1D = nullptr;
     L2 = nullptr;
+    vmm = nullptr;
 }
 
     void CPU::loadProgram(const std::vector<Instruction>& instructions){
@@ -35,16 +37,21 @@
     }
 
     void CPU::run(){
-
-    while (pc < instructions.size() || pipeline.hasPendingInstructions()) {
-
-        pipeline.step(instructions,
-                      pc,
-                      registerFile,
-                      memory, *L1I,*L1D,
-                      stats,
-                      config);
+        while (pc < instructions.size() || pipeline.hasPendingInstructions()) {
+            step();
+        }
     }
+
+    void CPU::step(){
+        if (pc < instructions.size() || pipeline.hasPendingInstructions()) {
+            pipeline.step(instructions,
+                          pc,
+                          registerFile,
+                          memory, *L1I,*L1D,
+                          stats,
+                          config,
+                          vmm);
+        }
     }
 
     void CPU::dumpMemory(int start, int end) const {
@@ -52,6 +59,7 @@
     }
     void CPU::setConfig(const ConfigReader& config) {
     this->config = config;
+    memory.resize(config.getPhysicalSizeBytes());
     delete L1I; delete L1D; delete L2;
     L1I = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), ReplacementPolicy::LRU);
     L1D = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), ReplacementPolicy::LRU);
@@ -62,4 +70,7 @@
 
     L2->nextLevel = nullptr;
     L2->memLatency = config.getMemLatency();
+    
+    delete vmm;
+    vmm = new VirtualMemoryManager(config, &stats);
 }

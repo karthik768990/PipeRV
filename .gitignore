@@ -4,3 +4,24 @@ build/
 simulator.exe 
 *.exe
 test.exe
+
+# C++ Build Outputs
+*.o
+*.out
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Node / Frontend
+node_modules/
+.env
+dist/
+dist-ssr/
+build-frontend/
+
+# OS Files
+.DS_Store
+Thumbs.db

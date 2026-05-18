@@ -1,4 +1,5 @@
 #include "Pipeline.hpp"
+#include "vm/virtual_memory_manager.hpp"
 #include <cassert>
 #include <iostream>
 
@@ -11,6 +12,7 @@ void Pipeline::reset() {
     flush = false;
     mem_stall_cycles = 0;
     if_stall_cycles = 0;
+    current_pa = 0;
     ex_cycles_remaining = 0; // Reset multi-cycle tracker
     mem_access_in_progress = false;
     if_id = {Instruction(), -1};
@@ -24,7 +26,8 @@ void Pipeline::step(std::vector<Instruction>& instructions,
                     RegisterFile& registerFile,
                     Memory& memory ,Cache& L1I, Cache& L1D,
                     Stats& stats,
-                    ConfigReader& config) {
+                    ConfigReader& config,
+                    VirtualMemoryManager* vmm) {
 
     
     // 0. WB STAGE (Simulate falling-edge write)
@@ -34,6 +37,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     if (wbInst.opcode != OPCODE::NOP) {
         if (wbInst.rd > 0 && 
             wbInst.opcode != OPCODE::SW && 
+            wbInst.opcode != OPCODE::S && 
             wbInst.opcode != OPCODE::BNE &&
             wbInst.opcode != OPCODE::BLT &&
             wbInst.opcode != OPCODE::BGE) {
@@ -78,7 +82,7 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         
         auto isWritingToReg = [](int rs, const Instruction& inst) {
             return (rs > 0 && inst.rd == rs && 
-                    inst.opcode != OPCODE::SW && inst.opcode != OPCODE::BNE && 
+                    inst.opcode != OPCODE::SW && inst.opcode != OPCODE::S && inst.opcode != OPCODE::BNE && 
                     inst.opcode != OPCODE::BLT && inst.opcode != OPCODE::BGE && 
                     inst.opcode != OPCODE::NOP);
         };
@@ -102,10 +106,23 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         }
     }
     else {
-        if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW) 
+        if ((memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::SW || memInst.opcode == OPCODE::L || memInst.opcode == OPCODE::S) 
             && !mem_access_in_progress) {
 
-        int total_latency = L1D.access(ex_mem.aluResult);
+        int va = ex_mem.aluResult;
+        bool isWrite = (memInst.opcode == OPCODE::SW || memInst.opcode == OPCODE::S);
+        int total_latency = 0;
+        
+        if ((memInst.opcode == OPCODE::L || memInst.opcode == OPCODE::S) && vmm != nullptr) {
+            int penalty = 0;
+            current_pa = vmm->translate(va, isWrite, penalty);
+            int cache_lat = L1D.access(current_pa);
+            total_latency = penalty + cache_lat;
+        } else {
+            current_pa = va;
+            total_latency = L1D.access(va);
+        }
+
         mem_access_in_progress = true;
 
         if (total_latency > 1) {
@@ -117,11 +134,11 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     }
 
     if (mem_stall_cycles == 0) {
-        if (memInst.opcode == OPCODE::LW) {
-            next_mem_wb.writeData = memory.load(ex_mem.aluResult);
+        if (memInst.opcode == OPCODE::LW || memInst.opcode == OPCODE::L) {
+            next_mem_wb.writeData = memory.load(current_pa);
         }
-        else if (memInst.opcode == OPCODE::SW) {
-            memory.store(ex_mem.aluResult, ex_mem.operand2);
+        else if (memInst.opcode == OPCODE::SW || memInst.opcode == OPCODE::S) {
+            memory.store(current_pa, ex_mem.operand2);
             next_mem_wb.writeData = 0;
         }
         else {
@@ -214,12 +231,15 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         else if (exInst.opcode == OPCODE::ADDI) {
             next_ex_mem.aluResult = op1 + exInst.immediate;
         }
-        else if (exInst.opcode == OPCODE::LW) {
-            next_ex_mem.aluResult = op1 + exInst.immediate;
+        else if (exInst.opcode == OPCODE::LW || exInst.opcode == OPCODE::L) {
+            next_ex_mem.aluResult = (exInst.opcode == OPCODE::L) ? exInst.immediate : op1 + exInst.immediate;
         }
-        else if (exInst.opcode == OPCODE::SW) {
-            next_ex_mem.aluResult = op1 + exInst.immediate;
-            next_ex_mem.operand2 = op2;                    
+        else if (exInst.opcode == OPCODE::SW || exInst.opcode == OPCODE::S) {
+            next_ex_mem.aluResult = (exInst.opcode == OPCODE::S) ? exInst.immediate : op1 + exInst.immediate;
+            next_ex_mem.operand2 = (exInst.opcode == OPCODE::S) ? op1 : op2;                    
+        }
+        else if (exInst.opcode == OPCODE::MUL) {
+            next_ex_mem.aluResult = op1 * op2;
         }
         else if (exInst.opcode == OPCODE::BNE) {
             if (op1 != op2) {

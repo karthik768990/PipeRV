@@ -128,6 +128,18 @@ These metrics help analyze processor performance.
 
 ---
 
+## 8. Virtual Memory Subsystem (Phase-3)
+
+The simulator implements a comprehensive Virtual Memory Manager (VMM) supporting:
+- **Trace Replay Execution**: Direct simulation of execution traces containing `L`, `S`, `ADD`, and `MUL` instructions.
+- **Data TLB (DTLB)**: Fast-path translation with configurable latencies and hit/miss tracking.
+- **Flat Page Table**: 32-bit virtual addressing mapped dynamically to simulate full address spaces.
+- **Frame Manager**: Enforces strict finite physical memory constraints dynamically allocating physical frames.
+- **Page Replacements**: Evicts pages using FIFO or LRU policies when memory is full, logging dirty write-back penalties.
+- **Pipeline Freezing**: Aggregates translation latency overhead correctly to stall pipeline execution deterministically.
+
+---
+
 # Project Structure
 
 ```
@@ -137,6 +149,11 @@ PipeRV-main
 │   └── config.txt
 │
 ├── include/
+│   ├── vm/
+│   │   ├── frame_manager.hpp
+│   │   ├── page_table.hpp
+│   │   ├── tlb.hpp
+│   │   └── virtual_memory_manager.hpp
 │   ├── CPU.hpp
 │   ├── ConfigReader.hpp
 │   ├── ForwardingUnit.hpp
@@ -149,6 +166,11 @@ PipeRV-main
 │   └── Stats.hpp
 │
 ├── src/
+│   ├── vm/
+│   │   ├── frame_manager.cpp
+│   │   ├── page_table.cpp
+│   │   ├── tlb.cpp
+│   │   └── virtual_memory_manager.cpp
 │   ├── CPU.cpp
 │   ├── ConfigReader.cpp
 │   ├── ForwardingUnit.cpp
@@ -196,7 +218,7 @@ PipeRV-main
 ## Meeting – 28 Feb 2026
 
 **Members:**  
-Mohammed Owais, Karthikeya T 
+Mohammed Owais, Karthik T 
 
 ### Decisions
 - Finalized simulator architecture  
@@ -232,7 +254,7 @@ Mohammed Owais, Karthik Tamarapalli
 # Contributors
 
 - Mohammed Owais  
-- Karthikeya Tamarapalli 
+- Karthik Tamarapalli 
 
 ---
 
@@ -240,15 +262,19 @@ Mohammed Owais, Karthik Tamarapalli
 ## Compiling the simulator 
    - Compile the simulator using the following command
      ```bash
-      g++ -std=c++17 src/*.cpp -Iinclude -o simulator
+      g++ -std=c++17 src/*.cpp src/vm/*.cpp -Iinclude -o simulator
      ```
+     *(Note: If compiling under Windows PowerShell, you can use: `g++ -std=c++17 src/CPU.cpp src/Cache.cpp src/ConfigReader.cpp src/ForwardingUnit.cpp src/HazardUnit.cpp src/Memory.cpp src/Parser.cpp src/Pipeline.cpp src/RegisterFile.cpp src/Stats.cpp src/main.cpp src/vm/frame_manager.cpp src/vm/page_table.cpp src/vm/tlb.cpp src/vm/virtual_memory_manager.cpp -Iinclude -o simulator`)*
 
 ## Running the simulator 
-   - Run the simulator using the following command
-
+   - Run the phase-1 standard assembly simulation:
       ```bash
                ./simulator input/config.txt input/bubble_sort.asm
-     ```
+      ```
+   - Run the phase-3 trace replay virtual memory simulation:
+      ```bash
+               ./simulator vm_config.txt test.trace
+      ```
 # License
 
 This project is developed as part of the **CS209P Computer Architecture course project at IIT Tirupati**.

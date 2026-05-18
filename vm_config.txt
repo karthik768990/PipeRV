@@ -1,0 +1,22 @@
+[pipeline]
+forwarding_enabled = 1
+
+[latencies]
+ADD = 1
+MUL = 3
+
+[memory]
+virtual_size_bytes = 65536
+physical_size_bytes = 16384
+page_size_bytes = 4096
+l1_size = 4096
+l1_block_size = 64
+l1_assoc = 1
+l1_latency = 1
+
+[vm]
+dtlb_entries = 16
+tlb_hit_latency = 1
+page_walk_latency = 10
+page_fault_latency = 50
+replacement_policy = lru

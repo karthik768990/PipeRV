@@ -37,6 +37,13 @@ int main(int argc, char* argv[]) {
     std::cout << "Instructions: " << stats.getInstructionCount() << "\n";
     std::cout << "Stalls: " << stats.getStallCount() << "\n";
     std::cout << "IPC: " << stats.calculateIPC() << "\n";
+    std::cout << "TLB Hits: " << stats.getTLBHits() << "\n";
+    std::cout << "TLB Misses: " << stats.getTLBMisses() << "\n";
+    std::cout << "Page Walks: " << stats.getPageWalks() << "\n";
+    std::cout << "Page Faults: " << stats.getPageFaults() << "\n";
+    std::cout << "Page Evictions: " << stats.getPageEvictions() << "\n";
+    std::cout << "Dirty Evictions: " << stats.getDirtyEvictions() << "\n";
+    std::cout << "Translation Penalty Cycles: " << stats.getTranslationPenaltyCycles() << "\n";
 
     return 0;
 }

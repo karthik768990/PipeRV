@@ -8,6 +8,9 @@ BNE,
 JAL,
 BLT,
 BGE,
+L,
+S,
+MUL,
 COUNT};
 
 class Instruction{

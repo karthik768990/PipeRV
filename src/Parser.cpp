@@ -85,6 +85,9 @@ OPCODE Parser::convertOpCode(const std::string& opCodeString){
     else if(opString=="SUB")return OPCODE::SUB;
     else if(opString=="SW")return OPCODE::SW;
     else if(opString=="JAL")return OPCODE::JAL;
+    else if(opString=="L")return OPCODE::L;
+    else if(opString=="S")return OPCODE::S;
+    else if(opString=="MUL")return OPCODE::MUL;
     else return OPCODE::NOP;
 }
 
@@ -129,6 +132,24 @@ Instruction Parser::parseLineToInstruction(const std::string& instructionLine){
         int target = labelMap[tokens[2]];
         return Instruction(opcode, rd, -1, -1, target);
     }
+    else if(opcode == OPCODE::L){
+        // L 0x1000 x5
+        int offset = std::stoul(tokens[1], nullptr, 0);
+        int rd = parseRegister(tokens[2]);
+        return Instruction(opcode, rd, -1, -1, offset);
+    }
+    else if(opcode == OPCODE::S){
+        // S 0x1004 x6
+        int offset = std::stoul(tokens[1], nullptr, 0);
+        int rs1 = parseRegister(tokens[2]);
+        return Instruction(opcode, -1, rs1, -1, offset);
+    }
+    else if(opcode == OPCODE::MUL){
+        int rd = parseRegister(tokens[1]);
+        int rs1 = parseRegister(tokens[2]);
+        int rs2 = parseRegister(tokens[3]);
+        return Instruction(opcode, rd, rs1, rs2, 0);
+    }
 
     return Instruction();
 }
@@ -156,6 +177,54 @@ std::vector<Instruction> Parser::parse(const std::string& fileName){
     std::string line;
 
     while(std::getline(file, line)){
+        line = removeComments(line);
+        line = trimWhiteSpace(line);
+
+        if(!line.empty())
+            lines.push_back(line);
+    }
+
+    // PASS 1 : for  building label map
+    int instructionIndex = 0;
+
+    for(auto &l : lines){
+
+        if(containsLabel(l)){
+            std::string label = extractLabel(l);
+            labelMap[label] = instructionIndex;
+
+            l = removeLabel(l);
+
+            if(l.empty())
+                continue;
+        }
+
+        instructionIndex++;
+    }
+
+    // PASS 2 :  for building  instructions
+    std::vector<Instruction> instructions;
+
+    for(auto &l : lines){
+
+        if(containsLabel(l))
+            l = removeLabel(l);
+
+        if(l.empty())
+            continue;
+
+        instructions.push_back(parseLineToInstruction(l));
+    }
+
+    return instructions;
+}
+
+std::vector<Instruction> Parser::parseText(const std::string& text){
+    std::istringstream stream(text);
+    std::vector<std::string> lines;
+    std::string line;
+
+    while(std::getline(stream, line)){
         line = removeComments(line);
         line = trimWhiteSpace(line);
 

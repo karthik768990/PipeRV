@@ -23,5 +23,6 @@ class Parser{
         std::vector<std::string> tokenize(const std::string& line);
         std::pair<int, int> parseMemoryOperand(const std::string& operand);
     public:
-        std::vector<Instruction> parse(const std::string& fileName);    
+        std::vector<Instruction> parse(const std::string& fileName);
+        std::vector<Instruction> parseText(const std::string& text);
     };
