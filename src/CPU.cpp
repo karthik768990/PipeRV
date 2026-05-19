@@ -1,4 +1,4 @@
-#include "CPU.hpp"
+#include "../include/CPU.hpp"
 
     CPU::CPU(){
         pc = 0;

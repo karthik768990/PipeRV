@@ -3,24 +3,25 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile
-      target: frontend-build
-    image: piperv-frontend:latest
-    # Nginx stage is what we want for frontend
-    build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
     depends_on:
       - backend
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - SIMULATOR_PATH=/simulator/simulator
     volumes:
-      - ./server:/app
+      # Mount the compiled simulator binary or source code to the backend
+      - ./build:/simulator
+      - ./uploads:/app/uploads
