@@ -2,16 +2,46 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { loader } from '@monaco-editor/react';
+
+// Configure Monaco loader to use local files in the public directory
+if (typeof window !== 'undefined') {
+  loader.config({ paths: { vs: '/monaco-editor/min/vs' } });
+}
+
 import { useSimulatorStore } from '@/store/simulatorStore';
-import DebugToolbar from '@/components/simulator/DebugToolbar';
-import RegisterPanel from '@/components/simulator/RegisterPanel';
-import MemoryPanel from '@/components/simulator/MemoryPanel';
-import PipelineVisualization from '@/components/simulator/PipelineVisualization';
-import ConsolePanel from '@/components/simulator/ConsolePanel';
-import PerformancePanel from '@/components/simulator/PerformancePanel';
-import ConfigPanel from '@/components/simulator/ConfigPanel';
-import DatapathVisualization from '@/components/simulator/DatapathVisualization';
-import PipelineTimingDiagram from '@/components/simulator/PipelineTimingDiagram';
+import { ModuleLoader } from '@/components/ui/loader';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+
+// Dynamic imports for heavy panels (Code Splitting & Lazy Loading)
+const DebugToolbar = dynamic(() => import('@/components/simulator/DebugToolbar'), {
+  loading: () => <Skeleton className="h-12 w-full rounded-none border-b border-border/40" />
+});
+const RegisterPanel = dynamic(() => import('@/components/simulator/RegisterPanel'), {
+  loading: () => <ModuleLoader name="Registers" />
+});
+const MemoryPanel = dynamic(() => import('@/components/simulator/MemoryPanel'), {
+  loading: () => <ModuleLoader name="Memory" />
+});
+const PipelineVisualization = dynamic(() => import('@/components/simulator/PipelineVisualization'), {
+  loading: () => <ModuleLoader name="Pipeline" />
+});
+const ConsolePanel = dynamic(() => import('@/components/simulator/ConsolePanel'), {
+  loading: () => <ModuleLoader name="Console" />
+});
+const PerformancePanel = dynamic(() => import('@/components/simulator/PerformancePanel'), {
+  loading: () => <ModuleLoader name="Performance Stats" />
+});
+const ConfigPanel = dynamic(() => import('@/components/simulator/ConfigPanel'), {
+  loading: () => <ModuleLoader name="Configuration" />
+});
+const DatapathVisualization = dynamic(() => import('@/components/simulator/DatapathVisualization'), {
+  loading: () => <ModuleLoader name="Datapath" />
+});
+const PipelineTimingDiagram = dynamic(() => import('@/components/simulator/PipelineTimingDiagram'), {
+  loading: () => <ModuleLoader name="Timing Diagram" />
+});
 import {
   Cpu, Layers, BarChart3, Settings, MemoryStick, GitBranch,
   Timer, PanelLeftClose, PanelLeftOpen, PanelBottomClose, PanelBottomOpen,
@@ -161,8 +191,14 @@ export default function SimulatorIDE() {
 
   const [rightPanelWidth, setRightPanelWidth] = useState(380);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(220);
+  const [isMounted, setIsMounted] = useState(false);
   const resizingRef = useRef<'right' | 'bottom' | null>(null);
   const editorRef = useRef<any>(null);
+
+  // Mark client as mounted for progressive rendering
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -337,21 +373,21 @@ export default function SimulatorIDE() {
 
   const renderRightPanel = () => {
     switch (activeRightPanel) {
-      case 'registers': return <RegisterPanel />;
-      case 'memory': return <MemoryPanel />;
-      case 'pipeline': return <PipelineVisualization />;
-      case 'datapath': return <DatapathVisualization />;
-      case 'timing': return <PipelineTimingDiagram />;
-      case 'performance': return <PerformancePanel />;
-      case 'config': return <ConfigPanel />;
-      default: return <RegisterPanel />;
+      case 'registers': return <ErrorBoundary moduleName="Registers"><RegisterPanel /></ErrorBoundary>;
+      case 'memory': return <ErrorBoundary moduleName="Memory"><MemoryPanel /></ErrorBoundary>;
+      case 'pipeline': return <ErrorBoundary moduleName="Pipeline"><PipelineVisualization /></ErrorBoundary>;
+      case 'datapath': return <ErrorBoundary moduleName="Datapath"><DatapathVisualization /></ErrorBoundary>;
+      case 'timing': return <ErrorBoundary moduleName="Timing"><PipelineTimingDiagram /></ErrorBoundary>;
+      case 'performance': return <ErrorBoundary moduleName="Performance"><PerformancePanel /></ErrorBoundary>;
+      case 'config': return <ErrorBoundary moduleName="Config"><ConfigPanel /></ErrorBoundary>;
+      default: return <ErrorBoundary moduleName="Registers"><RegisterPanel /></ErrorBoundary>;
     }
   };
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* Debug Toolbar */}
-      <DebugToolbar />
+      {isMounted ? <DebugToolbar /> : <Skeleton className="h-12 w-full rounded-none border-b border-border/40" />}
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
@@ -448,10 +484,12 @@ export default function SimulatorIDE() {
                   onMouseDown={() => { resizingRef.current = 'bottom'; document.body.style.cursor = 'row-resize'; }}
                 />
                 <div className="shrink-0" style={{ height: bottomPanelHeight }}>
-                  <ConsolePanel />
+                  <ErrorBoundary moduleName="Console">
+                    <ConsolePanel />
+                  </ErrorBoundary>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -490,8 +528,16 @@ export default function SimulatorIDE() {
           </div>
 
           {/* Panel content */}
-          <div className="flex-1 min-w-0 bg-card/30">
-            {renderRightPanel()}
+          <div className="flex-1 min-w-0 bg-card/30 relative">
+            {!isMounted ? (
+              <div className="absolute inset-0 p-4 space-y-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+              </div>
+            ) : (
+              renderRightPanel()
+            )}
           </div>
         </div>
       </div>

@@ -1,8 +1,21 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Needed for docker deployment
-  turbopack: {},        // Silence turbopack warning, use defaults
+  compress: true, // Enable gzip compression
+  swcMinify: true, // Faster minification
+  experimental: {
+    optimizeCss: true, // Optimize CSS
+    optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
+  turbopack: {
+    root: path.resolve('.'),
+  },
 };
 
 export default nextConfig;

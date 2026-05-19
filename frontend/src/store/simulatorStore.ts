@@ -462,29 +462,43 @@ nop`,
 
   // ═══════════ State Sync ═══════════
   _syncState: () => {
-    const { cpu, memoryBaseAddress, memoryDisplayCount } = get();
+    const s = get();
+    const { cpu, memoryBaseAddress, memoryDisplayCount } = s;
     if (!cpu) return;
 
     // Sync registers
     const regs = cpu.registerFile.getAll();
     const changedRegs = new Set(cpu.changedRegisters);
-    const registers: RegisterView[] = regs.map((val, i) => ({
-      index: i,
-      name: `x${i}`,
-      abiName: REG_ABI_NAMES[i],
-      value: val,
-      changed: changedRegs.has(i),
-      prevValue: changedRegs.has(i) ? (cpu.history.length > 0 ? cpu.history[cpu.history.length - 1].registers[i] : 0) : val,
-    }));
+    const registers = s.registers.map((oldReg, i) => {
+      const val = regs[i];
+      const isChanged = changedRegs.has(i);
+      const prevVal = isChanged ? (cpu.history.length > 0 ? cpu.history[cpu.history.length - 1].registers[i] : 0) : val;
+      if (oldReg.value === val && oldReg.changed === isChanged && oldReg.prevValue === prevVal) {
+        return oldReg; // keep reference
+      }
+      return {
+        ...oldReg,
+        value: val,
+        changed: isChanged,
+        prevValue: prevVal,
+      };
+    });
 
     // Sync memory
     const memEntries = cpu.memory.getRange(memoryBaseAddress, memoryDisplayCount);
     const changedMem = new Set(cpu.changedMemory);
-    const memoryEntries: MemoryEntry[] = memEntries.map(e => ({
-      address: e.address,
-      value: e.value,
-      modified: changedMem.has(e.address),
-    }));
+    const memoryEntries = memEntries.map(e => {
+      const oldMem = s.memoryEntries.find(m => m.address === e.address);
+      const isModified = changedMem.has(e.address);
+      if (oldMem && oldMem.value === e.value && oldMem.modified === isModified) {
+        return oldMem;
+      }
+      return {
+        address: e.address,
+        value: e.value,
+        modified: isModified,
+      };
+    });
 
     // Sync pipeline stages
     const p = cpu.pipeline;
@@ -565,8 +579,8 @@ nop`,
       stats: cpu.getStats(),
       hazards,
       forwarding,
-      logs: [...cpu.logs],
-      timingDiagram: [...cpu.timingDiagram],
+      logs: s.logs.length === cpu.logs.length ? s.logs : cpu.logs, // pass ref directly, rely on cycle for re-renders
+      timingDiagram: s.timingDiagram.length === cpu.timingDiagram.length ? s.timingDiagram : cpu.timingDiagram, // pass ref directly
       halted: cpu.halted,
       canStepBack: cpu.history.length > 0,
       historyLength: cpu.history.length,
