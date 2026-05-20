@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { UploadCloud, Play, FileText, Settings, Terminal, Activity, BarChart, Database } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("setup");
@@ -16,11 +18,22 @@ export default function Dashboard() {
     if (e.target.files && e.target.files.length > 0) {
       if (type === "trace") setTraceFile(e.target.files[0]);
       if (type === "config") setConfigFile(e.target.files[0]);
+      toast({
+        title: "File attached",
+        description: `${e.target.files[0].name} ready for simulation.`,
+        variant: "success",
+      });
     }
   };
 
   const runSimulation = async () => {
-    if (!traceFile && !configFile) return alert("Please upload at least a trace or config file");
+    if (!traceFile && !configFile) {
+      return toast({
+        title: "Upload Required",
+        description: "Please upload at least a trace or config file before running.",
+        variant: "destructive",
+      });
+    }
     
     setStatus("uploading");
     
@@ -29,8 +42,9 @@ export default function Dashboard() {
     if (configFile) formData.append("config", configFile);
 
     try {
-      // Backend is expected to be running on port 3001 locally, or same domain in prod
-      const uploadRes = await fetch("http://localhost:3001/api/upload", {
+      // Backend is expected to be running on API_URL
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const uploadRes = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData
       });
@@ -42,11 +56,11 @@ export default function Dashboard() {
       setStatus("running");
       setActiveTab("console");
 
-      await fetch(`http://localhost:3001/api/run/${uploadData.jobId}`, { method: "POST" });
+      await fetch(`${API_URL}/api/run/${uploadData.jobId}`, { method: "POST" });
       
       // Poll for status
       const interval = setInterval(async () => {
-        const statusRes = await fetch(`http://localhost:3001/api/status/${uploadData.jobId}`);
+        const statusRes = await fetch(`${API_URL}/api/status/${uploadData.jobId}`);
         const statusData = await statusRes.json();
         
         setLogs(statusData.logs);
@@ -56,7 +70,7 @@ export default function Dashboard() {
           setStatus(statusData.status);
           
           if (statusData.status === "completed") {
-            const resultsRes = await fetch(`http://localhost:3001/api/results/${uploadData.jobId}`);
+            const resultsRes = await fetch(`${API_URL}/api/results/${uploadData.jobId}`);
             const resultsData = await resultsRes.json();
             setResults(resultsData.result);
             setActiveTab("stats");
@@ -74,10 +88,10 @@ export default function Dashboard() {
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card/50 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-border font-bold text-lg">
+        <Link href="/" className="h-16 flex items-center px-6 border-b border-border font-bold text-lg hover:text-primary transition-colors">
           <Activity className="mr-2 h-5 w-5 text-primary" />
           PipeRV
-        </div>
+        </Link>
         <nav className="flex-1 p-4 space-y-2">
           <button 
             onClick={() => setActiveTab("setup")}

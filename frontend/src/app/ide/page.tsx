@@ -489,7 +489,7 @@ export default function SimulatorIDE() {
                   </ErrorBoundary>
                 </div>
               </>
-            ) : null}
+            )}
           </div>
         </div>
 

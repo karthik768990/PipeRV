@@ -33,10 +33,67 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Existing REST APIs for file uploads
+const jobs = new Map<string, any>();
+
 app.post('/api/upload', upload.fields([{ name: 'trace', maxCount: 1 }, { name: 'config', maxCount: 1 }]), (req, res) => {
-    // ... logic remains similar but simplified since UI mainly uses WebSockets now
-    res.json({ message: 'Upload via REST supported but WebSockets preferred for IDE.' });
+    const traceFile = (req.files as any)['trace']?.[0];
+    const configFile = (req.files as any)['config']?.[0];
+    
+    if (!traceFile && !configFile) return res.status(400).json({ error: 'No files uploaded' });
+    
+    const jobId = Date.now().toString();
+    jobs.set(jobId, { status: 'uploaded', tracePath: traceFile?.path, configPath: configFile?.path, logs: [] });
+    
+    res.json({ jobId });
+});
+
+app.post('/api/run/:jobId', (req, res) => {
+    const jobId = req.params.jobId;
+    if (typeof jobId !== 'string' || jobId.length > 50) return res.status(400).json({ error: 'Invalid Job ID format' });
+    
+    const job = jobs.get(jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    job.status = 'running';
+    job.logs = [];
+    res.json({ success: true });
+    
+    const isWin = process.platform === 'win32';
+    const simulatorPath = process.env.SIMULATOR_PATH || path.join(__dirname, '../../simulator' + (isWin ? '.exe' : ''));
+    
+    if (!fs.existsSync(simulatorPath)) {
+        job.status = 'failed';
+        job.logs.push(`Simulator binary not found at ${simulatorPath}`);
+        return;
+    }
+
+    const args = [];
+    if (job.tracePath) { args.push('--trace'); args.push(job.tracePath); }
+    if (job.configPath) { args.push('--config'); args.push(job.configPath); }
+    
+    const proc = spawn(simulatorPath, args, { cwd: path.join(__dirname, '../../') });
+    proc.stdout.on('data', data => {
+      const text = data.toString();
+      text.split('\n').forEach((line: string) => { if (line.trim()) job.logs.push(line); });
+    });
+    proc.stderr.on('data', data => job.logs.push('[ERROR] ' + data.toString()));
+    proc.on('close', code => {
+        job.status = code === 0 ? 'completed' : 'failed';
+        // Mock stats until proper parser is integrated
+        job.result = { totalCycles: 2304, ipc: 0.92, tlbHits: 432, tlbMisses: 12, pageFaults: 2, evictions: 0, stalls: 124 }; 
+    });
+});
+
+app.get('/api/status/:jobId', (req, res) => {
+    const job = jobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: 'Not found' });
+    res.json({ status: job.status, logs: job.logs });
+});
+
+app.get('/api/results/:jobId', (req, res) => {
+    const job = jobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: 'Not found' });
+    res.json({ result: job.result });
 });
 
 // WebSocket Server for Live IDE
@@ -45,6 +102,16 @@ io.on('connection', (socket) => {
   let currentProcess: any = null;
 
   socket.on('run_asm', ({ code, config }) => {
+    // Basic Security: Input Validation & Payload Size Limiting
+    if (typeof code !== 'string' || code.length > 500000) { // Limit to 500KB
+        socket.emit('execution_error', 'Invalid payload: Assembly code exceeds maximum size limit (500KB).');
+        return;
+    }
+    if (config && (typeof config !== 'string' || config.length > 50000)) {
+        socket.emit('execution_error', 'Invalid payload: Configuration exceeds maximum size limit (50KB).');
+        return;
+    }
+
     console.log(`Running ASM for client: ${socket.id}`);
     
     // Convert ASM to Trace
@@ -71,7 +138,7 @@ io.on('connection', (socket) => {
 
     if (currentProcess) currentProcess.kill();
 
-    currentProcess = spawn(simulatorPath, args);
+    currentProcess = spawn(simulatorPath, args, { cwd: path.join(__dirname, '../../') });
     socket.emit('execution_start');
 
     currentProcess.stdout.on('data', (data: any) => {

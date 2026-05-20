@@ -19,7 +19,7 @@ const STAGE_LABELS: Record<string, string> = {
   WB: 'Write Back',
 };
 
-function PipelineStageCard({ stage }: { stage: PipelineStageView }) {
+const PipelineStageCard = React.memo(function PipelineStageCard({ stage }: { stage: PipelineStageView }) {
   const colors = STAGE_COLORS[stage.name] || STAGE_COLORS.IF;
 
   return (
@@ -74,7 +74,14 @@ function PipelineStageCard({ stage }: { stage: PipelineStageView }) {
       )}
     </div>
   );
-}
+}, (prev, next) => {
+  return prev.stage.name === next.stage.name &&
+         prev.stage.instruction === next.stage.instruction &&
+         prev.stage.stalled === next.stage.stalled &&
+         prev.stage.flushed === next.stage.flushed &&
+         prev.stage.forwarded === next.stage.forwarded &&
+         JSON.stringify(prev.stage.details) === JSON.stringify(next.stage.details);
+});
 
 export default function PipelineVisualization() {
   const { pipelineStages, hazards, forwarding, cycle } = useSimulatorStore();

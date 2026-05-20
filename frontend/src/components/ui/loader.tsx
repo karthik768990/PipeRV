@@ -24,12 +24,36 @@ export function GlobalLoader({ message = "Loading PipeRV Simulator..." }: { mess
   );
 }
 
+import { Skeleton } from './skeleton';
+
 export function ModuleLoader({ name }: { name: string }) {
   return (
-    <div className="flex items-center justify-center w-full h-full min-h-[200px] p-6 bg-card/10 rounded-lg">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <span className="text-xs text-muted-foreground animate-pulse">Loading {name}...</span>
+    <div className="flex flex-col w-full h-full min-h-[300px] p-6 bg-card/10 rounded-xl border border-border/20 shadow-sm relative overflow-hidden">
+      {/* Header Skeleton */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-8 h-8 rounded-lg bg-primary/10" />
+          <Skeleton className="h-6 w-32 bg-muted/40" />
+        </div>
+        <Skeleton className="h-5 w-20 bg-muted/30 rounded-full" />
+      </div>
+      
+      {/* Content Skeleton */}
+      <div className="space-y-4 flex-1">
+        <Skeleton className="w-full h-12 bg-muted/20 rounded-lg" />
+        <div className="grid grid-cols-3 gap-4">
+          <Skeleton className="col-span-2 h-32 bg-muted/20 rounded-lg" />
+          <Skeleton className="col-span-1 h-32 bg-muted/20 rounded-lg" />
+        </div>
+        <Skeleton className="w-3/4 h-8 bg-muted/20 rounded-lg" />
+      </div>
+
+      {/* Pulsing overlay text */}
+      <div className="absolute inset-0 flex items-center justify-center bg-background/5 backdrop-blur-[1px]">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 border border-border/50 shadow-lg backdrop-blur-md">
+          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+          <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">Initializing {name}</span>
+        </div>
       </div>
     </div>
   );

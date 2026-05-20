@@ -1,29 +1,48 @@
-# Stage 1: Build Vite frontend
-FROM node:20 AS frontend-build
+# ═══════════════════════════════════════════════════════════════════════
+# PipeRV Backend Dockerfile
+# Compiles the C++ Simulator and runs the Node.js Express backend
+# ═══════════════════════════════════════════════════════════════════════
+
+# Use an official Node runtime as a parent image
+FROM node:20-bullseye
+
+# Install C++ compiler and build tools required for the simulator
+RUN apt-get update && apt-get install -y \
+    g++ \
+    make \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory for the application
 WORKDIR /app
-COPY piperv-frontend/package*.json ./
+
+# 1. Copy the C++ simulator source code and compile it
+COPY src/ ./src/
+COPY vm_config.txt ./
+# Compile all C++ files in the src/ directory into a Linux executable
+RUN g++ -O3 src/*.cpp -o simulator
+
+# 2. Setup the Node.js Backend
+WORKDIR /app/backend
+
+# Copy package.json and install backend dependencies
+COPY backend/package*.json ./
 RUN npm install
-COPY piperv-frontend/ ./
+
+# Copy the rest of the backend source code
+COPY backend/ ./
+
+# Build the TypeScript backend
 RUN npm run build
 
-# Stage 2: FastAPI Server
-FROM python:3.11-slim AS backend
-WORKDIR /app
-COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY server/ .
-# Assume compiled binary piperv is available locally or compiled here
-# For this Dockerfile, we will just copy it.
-# COPY build/simulator.exe /app/piperv
-# RUN chmod +x /app/piperv
+# Expose the port the app runs on
+EXPOSE 3001
 
-# Stage 3: Nginx + FastAPI combined or separate
-# The user asked for multi-stage. 
-# We'll use a single container with supervisor or just run fastapi and serve static via FastAPI for simplicity, or use nginx.
-# Let's use FastAPI to serve static files.
-# But spec says: "Stage 3: nginx -> serve static frontend, proxy /api and /ws to FastAPI"
-FROM nginx:alpine
-COPY --from=frontend-build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Set Environment Variables for Production
+ENV PORT=3001
+ENV NODE_ENV=production
+# Map the Node server to the freshly compiled Linux simulator binary
+ENV SIMULATOR_PATH=/app/simulator
+
+# Command to run the backend
+CMD ["npm", "start"]

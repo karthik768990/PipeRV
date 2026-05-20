@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Web platform for the RISC-V Pipeline & Virtual Memory Simulator.",
 };
 
+import { Toaster } from "@/components/ui/toaster";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,6 +21,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
         {children}
+        <Toaster />
       </body>
     </html>
   );

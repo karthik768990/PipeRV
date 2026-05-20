@@ -263,7 +263,17 @@ nop`,
   _runIntervalId: null,
 
   // ═══════════ Setters ═══════════
-  setCode: (code) => set({ code }),
+  setCode: (code) => {
+    set({ code });
+    const state = get();
+    if (state.status !== 'idle') {
+      // Auto-assemble when code changes if we've already assembled once
+      if ((window as any)._assembleTimeout) clearTimeout((window as any)._assembleTimeout);
+      (window as any)._assembleTimeout = setTimeout(() => {
+        get().loadProgram();
+      }, 500); // 500ms debounce
+    }
+  },
   setTheme: (theme) => set({ theme }),
   setConfig: (partial) => {
     set(s => {
@@ -302,10 +312,34 @@ nop`,
         halted: false,
       });
       get()._syncState();
+
+      // Show toast notification
+      const { toast } = require('@/hooks/use-toast');
+      const errorCount = result.errors.filter(e => e.severity === 'error').length;
+      if (errorCount > 0) {
+        toast({
+          title: "Assembly Failed",
+          description: `Found ${errorCount} syntax error(s). Check the editor.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Assembly Successful",
+          description: "Program compiled and loaded into memory.",
+          variant: "success"
+        });
+      }
+
     } catch (e) {
       set({
         status: 'error',
         errorMessage: e instanceof Error ? e.message : String(e),
+      });
+      const { toast } = require('@/hooks/use-toast');
+      toast({
+        title: "Simulator Error",
+        description: e instanceof Error ? e.message : "Fatal error loading program",
+        variant: "destructive"
       });
     }
   },

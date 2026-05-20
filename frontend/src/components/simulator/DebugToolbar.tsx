@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { useSimulatorStore } from '@/store/simulatorStore';
 import {
   Play, Square, Pause, RotateCcw, StepForward, SkipForward,
@@ -22,12 +23,12 @@ export default function DebugToolbar() {
   return (
     <div className="h-12 border-b border-border/60 bg-card/90 backdrop-blur-sm flex items-center px-3 gap-1 shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2 mr-3 pr-3 border-r border-border/40">
+      <Link href="/" className="flex items-center gap-2 mr-3 pr-3 border-r border-border/40 hover:opacity-80 transition-opacity">
         <Zap className="w-5 h-5 text-sky-400" />
         <span className="font-extrabold text-sm tracking-tight bg-gradient-to-r from-sky-400 to-violet-400 bg-clip-text text-transparent">
           PipeRV
         </span>
-      </div>
+      </Link>
 
       {/* Load / Assemble */}
       <button
