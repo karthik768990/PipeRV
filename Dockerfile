@@ -24,8 +24,8 @@ COPY vm_config.txt ./
 # Remove wasm_bridge.cpp because we are building a native Linux binary, not WebAssembly
 RUN rm -f src/wasm_bridge.cpp
 
-# Compile all C++ files in the src/ directory into a Linux executable
-RUN g++ -O3 -I include src/*.cpp -o simulator
+# Compile all C++ files in src/ and src/vm/ subdirectory into a Linux executable
+RUN g++ -O3 -I include src/*.cpp src/vm/*.cpp -o simulator
 
 # 2. Setup the Node.js Backend
 WORKDIR /app/backend
