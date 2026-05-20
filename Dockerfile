@@ -17,10 +17,15 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # 1. Copy the C++ simulator source code and compile it
+COPY include/ ./include/
 COPY src/ ./src/
 COPY vm_config.txt ./
+
+# Remove wasm_bridge.cpp because we are building a native Linux binary, not WebAssembly
+RUN rm -f src/wasm_bridge.cpp
+
 # Compile all C++ files in the src/ directory into a Linux executable
-RUN g++ -O3 src/*.cpp -o simulator
+RUN g++ -O3 -I include src/*.cpp -o simulator
 
 # 2. Setup the Node.js Backend
 WORKDIR /app/backend
