@@ -208,30 +208,3 @@ const RegisterRow = React.memo(function RegisterRow({
          (prev.isEditing ? prev.editValue === next.editValue : true) &&
          prev.formatValue === next.formatValue;
 });
-        </div>
-      </div>
-
-      {/* Hover tooltip */}
-      {hoveredReg !== null && hoveredReg < registers.length && (
-        <div className="px-3 py-2 border-t border-border/60 bg-card/90 text-[10px] font-mono space-y-0.5">
-          <div className="text-muted-foreground">
-            <span className="text-sky-400">x{hoveredReg}</span> ({registers[hoveredReg].abiName})
-          </div>
-          <div className="grid grid-cols-2 gap-x-4">
-            <span className="text-muted-foreground">Dec:</span>
-            <span className="text-foreground">{registers[hoveredReg].value}</span>
-            <span className="text-muted-foreground">Hex:</span>
-            <span className="text-foreground">{formatHex(registers[hoveredReg].value)}</span>
-            <span className="text-muted-foreground">Unsigned:</span>
-            <span className="text-foreground">{(registers[hoveredReg].value >>> 0).toString()}</span>
-          </div>
-          {registers[hoveredReg].changed && (
-            <div className="text-emerald-400 mt-1">
-              ← was {registers[hoveredReg].prevValue}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
