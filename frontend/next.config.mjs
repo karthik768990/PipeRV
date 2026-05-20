@@ -5,7 +5,6 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Needed for docker deployment
   compress: true, // Enable gzip compression
-  swcMinify: true, // Faster minification
   experimental: {
     optimizeCss: true, // Optimize CSS
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
