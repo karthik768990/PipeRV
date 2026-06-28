@@ -46,6 +46,10 @@ app.post('/api/upload', upload.fields([{ name: 'trace', maxCount: 1 }, { name: '
     
     res.json({ jobId });
 });
+app.get('/',(req,res)=>{
+    res.json({ status: 200,health: "Ok" });
+
+})
 
 app.post('/api/run/:jobId', (req, res) => {
     const jobId = req.params.jobId;
