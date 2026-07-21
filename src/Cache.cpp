@@ -36,7 +36,6 @@ int Cache::access(int address){
 
     return this->latency + downstreamLatency;
 }
-//replacement logic first in first out for now 
 void Cache::replaceLine(int setIndex,int tag){
     for(int i=0;i<associativity;i++){
         if(!sets[setIndex][i].valid){

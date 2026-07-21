@@ -61,9 +61,17 @@
     this->config = config;
     memory.resize(config.getPhysicalSizeBytes());
     delete L1I; delete L1D; delete L2;
-    L1I = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), ReplacementPolicy::LRU);
-    L1D = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), ReplacementPolicy::LRU);
-    L2 = new Cache(config.getL2Size(), config.getL2BlockSize(), config.getL2Assoc(), config.getL2Latency(), ReplacementPolicy::LRU);
+
+    ReplacementPolicy policy = ReplacementPolicy::LRU;
+    if (config.getReplacementPolicy() == "fifo" || config.getReplacementPolicy() == "FIFO") {
+        policy = ReplacementPolicy::FIFO;
+    } else if (config.getReplacementPolicy() == "lru" || config.getReplacementPolicy() == "LRU") {
+        policy = ReplacementPolicy::LRU;
+    }
+
+    L1I = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), policy);
+    L1D = new Cache(config.getL1Size(), config.getL1BlockSize(), config.getL1Assoc(), config.getL1Latency(), policy);
+    L2 = new Cache(config.getL2Size(), config.getL2BlockSize(), config.getL2Assoc(), config.getL2Latency(), policy);
 
     L1I->nextLevel = L2;
     L1D->nextLevel = L2;
