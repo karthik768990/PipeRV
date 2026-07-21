@@ -97,4 +97,4 @@ jobs:
         run: npm ci || npm install
         
       - name: Run Linter
-        run: npm run lint
+        run: npx next lint src
