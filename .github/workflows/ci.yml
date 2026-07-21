@@ -1,0 +1,100 @@
+name: Enterprise CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-simulator:
+    name: Build C++ Simulator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install GCC
+        run: sudo apt-get update && sudo apt-get install -y g++
+          
+      - name: Compile Simulator
+        run: |
+          g++ -std=c++17 -Wall -Wextra src/*.cpp src/vm/*.cpp -Iinclude -o simulator
+          
+      - name: Verify compilation
+        run: |
+          if [ ! -f simulator ]; then
+            echo "Simulator binary not found!"
+            exit 1
+          fi
+          
+      - name: Run Basic Test (Phase 1)
+        run: |
+          ./simulator input/config.txt input/bubble_sort.asm
+          
+      - name: Run Basic Test (Phase 3)
+        run: |
+          ./simulator vm_config.txt test.trace
+
+  build-backend:
+    name: Build Node.js Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci || npm install
+        
+      - name: Build backend
+        run: npm run build
+
+  build-frontend:
+    name: Build Next.js Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci || npm install
+        
+      - name: Build frontend
+        run: npm run build
+        
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci || npm install
+        
+      - name: Run Linter
+        run: npm run lint
