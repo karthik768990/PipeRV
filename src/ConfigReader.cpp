@@ -38,8 +38,8 @@
             if (!std::getline(ss, value)) continue;
 
             auto trim = [](std::string s) {
-                int start = s.find_first_not_of(" \t\r\n");
-                int end = s.find_last_not_of(" \t\r\n");
+                size_t start = s.find_first_not_of(" \t\r\n");
+                size_t end = s.find_last_not_of(" \t\r\n");
                 if (start == std::string::npos) return std::string("");
                 return s.substr(start, end - start + 1);
             };

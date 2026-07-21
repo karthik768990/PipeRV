@@ -37,13 +37,13 @@
     }
 
     void CPU::run(){
-        while (pc < instructions.size() || pipeline.hasPendingInstructions()) {
+        while ((size_t)pc < instructions.size() || pipeline.hasPendingInstructions()) {
             step();
         }
     }
 
     void CPU::step(){
-        if (pc < instructions.size() || pipeline.hasPendingInstructions()) {
+        if ((size_t)pc < instructions.size() || pipeline.hasPendingInstructions()) {
             pipeline.step(instructions,
                           pc,
                           registerFile,

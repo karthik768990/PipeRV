@@ -7,7 +7,7 @@ if(address % 4 != 0){
     std::cout << "INVALID ADDRESS ACCESS: " << address << std::endl;
 }
     assert(address % 4 == 0);
-    assert(address < mem.size() * 4);
+    assert((size_t)address < mem.size() * 4);
 
     int index = address / 4;
     return mem[index];
@@ -16,7 +16,7 @@ if(address % 4 != 0){
 void Memory::store(int address,int value){
     assert(address >= 0);
     assert(address % 4 == 0);
-    assert(address < mem.size() * 4);
+    assert((size_t)address < mem.size() * 4);
 
     int index = address / 4;
     mem[index] = value;

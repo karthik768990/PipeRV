@@ -9,14 +9,14 @@
 #include "ConfigReader.hpp"
 
 static std::string trim(std::string s) {
-    int start = s.find_first_not_of(" ");
-    int end = s.find_last_not_of(" ");
+    size_t start = s.find_first_not_of(" ");
+    size_t end = s.find_last_not_of(" ");
     if(start==std::string::npos && end==std::string::npos)return s;
     return s.substr(start, end - start + 1);
 }
 
 std::string Parser::removeComments(const std::string& line){
-    for(int i=0;i<line.length();i++){
+    for(size_t i=0;i<line.length();i++){
         if(line[i]=='#')return line.substr(0,i);
     }
     return line;
@@ -155,8 +155,8 @@ Instruction Parser::parseLineToInstruction(const std::string& instructionLine){
 }
 
 std::pair<int,int> Parser::parseMemoryOperand(const std::string& operand){
-    int open = operand.find('(');
-    int close = operand.find(')');
+    size_t open = operand.find('(');
+    size_t close = operand.find(')');
 
     assert(open != std::string::npos && close != std::string::npos);
 

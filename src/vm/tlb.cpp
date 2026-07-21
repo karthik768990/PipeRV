@@ -37,7 +37,7 @@ void TLB::insert(unsigned int vpn, unsigned int pfn, bool dirty) {
         return;
     }
 
-    if (entries.size() >= max_entries) {
+    if (entries.size() >= (size_t)max_entries) {
         unsigned int victim_vpn = replacement_list.front();
         replacement_list.pop_front();
         entries.erase(victim_vpn);

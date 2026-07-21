@@ -150,7 +150,6 @@ void Pipeline::step(std::vector<Instruction>& instructions,
     bool mem_stall = (mem_stall_cycles > 0);
 
     // 4. IF STAGE (THE FREEZE FIX)
-    bool if_stall = false;
 
     if (ex_stall || data_stall || mem_stall) {
         next_if_id = if_id; 
@@ -163,17 +162,15 @@ void Pipeline::step(std::vector<Instruction>& instructions,
         if (if_stall_cycles > 0) {
             if_stall_cycles--;
             stats.incrementStall();
-            if_stall = true;
             next_if_id = {Instruction(), -1}; 
         } 
         else {
-            if (pc < instructions.size()) {
+            if ((size_t)pc < instructions.size()) {
                 int fetch_latency = L1I.access(pc * 4); 
                 
                 if (fetch_latency > 1) {
                     if_stall_cycles = fetch_latency - 1;
                     stats.incrementStall();
-                    if_stall = true;
                     next_if_id = {Instruction(), -1}; 
                 } else {
                     next_if_id.instruction = instructions[pc];

@@ -19,7 +19,7 @@ jobs:
           
       - name: Compile Simulator
         run: |
-          g++ -std=c++17 -Wall -Wextra src/*.cpp src/vm/*.cpp -Iinclude -o simulator
+          g++ -std=c++17 -Wall -Wextra src/CPU.cpp src/Cache.cpp src/ConfigReader.cpp src/ForwardingUnit.cpp src/HazardUnit.cpp src/Memory.cpp src/Parser.cpp src/Pipeline.cpp src/RegisterFile.cpp src/Stats.cpp src/main.cpp src/vm/frame_manager.cpp src/vm/page_table.cpp src/vm/tlb.cpp src/vm/virtual_memory_manager.cpp -Iinclude -o simulator
           
       - name: Verify compilation
         run: |
